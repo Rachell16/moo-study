@@ -195,7 +195,7 @@ function MateriPage() {
                   <label className="grid gap-1.5 text-sm font-semibold">
                     Mata kuliah
                     <select
-                      className="field"
+                      className="field w-full"
                       value={courseId}
                       onChange={(e) => setCourseId(e.target.value)}
                     >
@@ -210,7 +210,7 @@ function MateriPage() {
                   <label className="grid gap-1.5 text-sm font-semibold">
                     Jenis
                     <select
-                      className="field"
+                      className="field w-full"
                       value={type}
                       onChange={(e) => setType(e.target.value)}
                     >
@@ -221,7 +221,7 @@ function MateriPage() {
                   <label className="grid gap-1.5 text-sm font-semibold">
                     Untuk ujian
                     <select
-                      className="field"
+                      className="field w-full"
                       value={scope}
                       onChange={(e) => setScope(e.target.value)}
                     >
@@ -265,7 +265,8 @@ function MateriPage() {
             <label className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <input
-                className="field w-full pl-10"
+                className="field w-full"
+                style={{ paddingLeft: "2.5rem" }}
                 placeholder="Cari judul atau mata kuliah..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

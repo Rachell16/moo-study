@@ -145,7 +145,7 @@ function ImportForm({
       <label className="grid gap-1.5 text-sm font-semibold">
         Teks jadwal
         <textarea
-          className="field min-h-28 font-mono text-xs"
+          className="field min-h-28 w-full font-mono text-xs"
           value={text}
           onChange={(e) => setText(e.target.value)}
           spellCheck={false}
@@ -156,7 +156,7 @@ function ImportForm({
         <label className="grid gap-1.5 text-sm font-semibold">
           Perkuliahan mulai
           <input
-            className="field"
+            className="field w-full"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
@@ -165,7 +165,7 @@ function ImportForm({
         <label className="grid gap-1.5 text-sm font-semibold">
           Jumlah minggu
           <input
-            className="field"
+            className="field w-full"
             type="number"
             min={1}
             max={30}
@@ -176,7 +176,7 @@ function ImportForm({
         <label className="grid gap-1.5 text-sm font-semibold">
           Semester (mata kuliah baru)
           <input
-            className="field"
+            className="field w-full"
             type="number"
             min={1}
             max={20}

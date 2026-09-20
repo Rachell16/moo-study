@@ -96,7 +96,7 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
         <form onSubmit={add} className="grid gap-3 border-t border-border pt-4">
           <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
             <input
-              className="field"
+              className="field w-full"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nama mata kuliah"
@@ -104,7 +104,7 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
               aria-label="Nama mata kuliah"
             />
             <input
-              className="field"
+              className="field w-full"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="Kode"
@@ -113,7 +113,7 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
             />
           </div>
           <input
-            className="field"
+            className="field w-full"
             value={lecturer}
             onChange={(e) => setLecturer(e.target.value)}
             placeholder="Dosen (opsional)"
@@ -121,7 +121,7 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
           />
           <div className="grid gap-3 sm:grid-cols-2">
             <select
-              className="field"
+              className="field w-full"
               value={color}
               onChange={(e) => setColor(e.target.value)}
               aria-label="Warna"
@@ -133,7 +133,7 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
               ))}
             </select>
             <input
-              className="field"
+              className="field w-full"
               type="number"
               min={1}
               max={20}

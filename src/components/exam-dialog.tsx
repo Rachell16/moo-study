@@ -124,7 +124,7 @@ function ExamForm({
             <label className="grid gap-1.5 text-sm font-semibold">
               Mata kuliah
               <select
-                className="field"
+                className="field w-full"
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
               >
@@ -137,7 +137,11 @@ function ExamForm({
             </label>
             <label className="grid gap-1.5 text-sm font-semibold">
               Jenis
-              <select className="field" value={kind} onChange={(e) => setKind(e.target.value)}>
+              <select
+                className="field w-full"
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+              >
                 {EXAM_KINDS.map((k) => (
                   <option key={k.value} value={k.value}>
                     {k.label}
@@ -150,7 +154,7 @@ function ExamForm({
             <label className="grid gap-1.5 text-sm font-semibold">
               Mulai
               <input
-                className="field"
+                className="field w-full"
                 type="datetime-local"
                 value={start}
                 onChange={(e) => setStart(e.target.value)}
@@ -159,7 +163,7 @@ function ExamForm({
             <label className="grid gap-1.5 text-sm font-semibold">
               Durasi (menit)
               <input
-                className="field"
+                className="field w-full"
                 type="number"
                 min={10}
                 max={600}
@@ -172,7 +176,7 @@ function ExamForm({
           <label className="grid gap-1.5 text-sm font-semibold">
             Lokasi
             <input
-              className="field"
+              className="field w-full"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="mis. Gedung FMIPA R. 101"

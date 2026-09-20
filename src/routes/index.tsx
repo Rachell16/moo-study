@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, Clock3, MapPin, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, StudyShell } from "@/components/study-shell";
+import { WelcomeScreen } from "@/components/welcome-screen";
 import cowMascot from "@/assets/cow-mascot.png";
 import {
   useCourses,
@@ -50,7 +51,7 @@ function greetingFor(hour: number) {
 }
 
 function Index() {
-  const { userId } = useSession();
+  const { loading, userId } = useSession();
   // Tanggal dan salam dihitung setelah tampil di browser supaya tidak beda dengan hasil render server.
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
@@ -104,6 +105,10 @@ function Index() {
   const recent = (materials.data ?? []).slice(0, 2);
   const courseName = (id: string | null) =>
     courses.data?.find((c) => c.id === id)?.name ?? "Belum dikategorikan";
+
+  // Belum masuk: tampilkan layar selamat datang. Saat sesi masih diperiksa, tampilkan latar yang sama supaya tidak berkedip.
+  if (loading) return <div className="pasture min-h-screen" />;
+  if (!userId) return <WelcomeScreen />;
 
   return (
     <StudyShell

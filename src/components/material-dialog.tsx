@@ -94,7 +94,7 @@ function Form({
       <label className="grid gap-1.5 text-sm font-semibold">
         Nama
         <input
-          className="field"
+          className="field w-full"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={200}
@@ -102,7 +102,11 @@ function Form({
       </label>
       <label className="grid gap-1.5 text-sm font-semibold">
         Mata kuliah
-        <select className="field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+        <select
+          className="field w-full"
+          value={courseId}
+          onChange={(e) => setCourseId(e.target.value)}
+        >
           <option value="">Belum dikategorikan</option>
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
@@ -114,14 +118,14 @@ function Form({
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1.5 text-sm font-semibold">
           Jenis
-          <select className="field" value={type} onChange={(e) => setType(e.target.value)}>
+          <select className="field w-full" value={type} onChange={(e) => setType(e.target.value)}>
             <option value="kuliah">Kuliah</option>
             <option value="praktikum">Praktikum</option>
           </select>
         </label>
         <label className="grid gap-1.5 text-sm font-semibold">
           Untuk ujian
-          <select className="field" value={scope} onChange={(e) => setScope(e.target.value)}>
+          <select className="field w-full" value={scope} onChange={(e) => setScope(e.target.value)}>
             {EXAM_KINDS.map((k) => (
               <option key={k.value} value={k.value}>
                 {k.label}

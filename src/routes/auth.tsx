@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,14 +23,32 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
+
+  // pesan dari Supabase dibuat lebih mudah dimengerti
+  const friendly = (m: string) =>
+    /invalid login/i.test(m)
+      ? "Email atau kata sandi salah."
+      : /rate limit/i.test(m)
+        ? "Terlalu banyak email terkirim dalam waktu singkat. Tunggu sebentar lalu coba lagi."
+        : /already registered/i.test(m)
+          ? "Email ini sudah terdaftar. Coba klik Masuk."
+          : m;
+
   const signIn = async () => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setMessage(error ? error.message : "Berhasil masuk. Kembali ke beranda.");
+    if (error) return setMessage(friendly(error.message));
+    void navigate({ to: "/" });
   };
+
   const signUp = async () => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    setMessage(error ? error.message : "Cek email untuk mengonfirmasi akunmu.");
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return setMessage(friendly(error.message));
+    if (data.session)
+      void navigate({ to: "/" }); // konfirmasi email dimatikan: langsung masuk
+    else setMessage("Cek email untuk mengonfirmasi akunmu.");
   };
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-checker p-5">
       <section className="w-full max-w-md rounded-md border border-border bg-card p-7 shadow-xl">

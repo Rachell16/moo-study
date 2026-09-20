@@ -1,8 +1,21 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { BookOpen, CalendarDays, Clock3, GraduationCap, Home, ListChecks, LogIn, Menu, X } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  BookOpen,
+  CalendarDays,
+  Clock3,
+  GraduationCap,
+  Home,
+  ListChecks,
+  LogIn,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CowMark } from "@/components/cow-mark";
+import { useSession } from "@/hooks/use-session";
+import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
   { to: "/", label: "Beranda", icon: Home },
@@ -13,37 +26,109 @@ const nav = [
   { to: "/timer", label: "Timer", icon: Clock3 },
 ] as const;
 
-export function StudyShell({ children, title, kicker }: { children: ReactNode; title: string; kicker: string }) {
+export function StudyShell({
+  children,
+  title,
+  kicker,
+}: {
+  children: ReactNode;
+  title: string;
+  kicker: string;
+}) {
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (state) => state.location.pathname });
+  const { loading, userId } = useSession();
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar px-4 py-5 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar px-4 py-5 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+      >
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
             <CowMark className="h-11 w-11" />
-            <div><p className="font-display text-xl font-bold leading-none">Moo Study</p><p className="mt-1 text-xs text-muted-foreground">my little study barn</p></div>
+            <div>
+              <p className="font-display text-xl font-bold leading-none">Moo Study</p>
+              <p className="mt-1 text-xs text-muted-foreground">my little study barn</p>
+            </div>
           </Link>
-          <Button size="icon" variant="ghost" className="md:hidden" onClick={() => setOpen(false)} aria-label="Tutup menu"><X /></Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="md:hidden"
+            onClick={() => setOpen(false)}
+            aria-label="Tutup menu"
+          >
+            <X />
+          </Button>
         </div>
         <div className="my-6 h-px bg-border" />
         <nav className="space-y-2" aria-label="Navigasi utama">
           {nav.map((item) => {
             const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
-            return <Link key={item.to} to={item.to} onClick={() => setOpen(false)} className={`flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}><item.icon className="h-4 w-4" /><span>{item.label}</span>{active && <span className="ml-auto h-2 w-2 rounded-full bg-accent" />}</Link>;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                className={`flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.label}</span>
+                {active && <span className="ml-auto h-2 w-2 rounded-full bg-accent" />}
+              </Link>
+            );
           })}
         </nav>
         <div className="mt-auto rounded-md border border-border bg-card p-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-primary">Catatan hari ini</p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Pelan-pelan asal konsisten. Kamu nggak harus menyelesaikan semuanya hari ini.</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">
+            Catatan hari ini
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Pelan-pelan asal konsisten. Kamu nggak harus menyelesaikan semuanya hari ini.
+          </p>
         </div>
       </aside>
-      {open && <button className="fixed inset-0 z-30 bg-foreground/20 md:hidden" onClick={() => setOpen(false)} aria-label="Tutup menu" />}
+      {open && (
+        <button
+          className="fixed inset-0 z-30 bg-foreground/20 md:hidden"
+          onClick={() => setOpen(false)}
+          aria-label="Tutup menu"
+        />
+      )}
       <div className="min-h-screen md:pl-64">
         <header className="sticky top-0 z-20 flex min-h-20 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur md:px-8">
-          <Button size="icon" variant="outline" className="md:hidden" onClick={() => setOpen(true)} aria-label="Buka menu"><Menu /></Button>
-          <div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-wider text-primary">{kicker}</p><h1 className="font-display truncate text-2xl font-bold md:text-3xl">{title}</h1></div>
-          <Button asChild variant="outline" className="hidden sm:inline-flex"><Link to="/auth"><LogIn /> Masuk</Link></Button>
+          <Button
+            size="icon"
+            variant="outline"
+            className="md:hidden"
+            onClick={() => setOpen(true)}
+            aria-label="Buka menu"
+          >
+            <Menu />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">{kicker}</p>
+            <h1 className="font-display truncate text-2xl font-bold md:text-3xl">{title}</h1>
+          </div>
+          {loading ? null : userId ? (
+            <Button
+              variant="outline"
+              aria-label="Keluar"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                void navigate({ to: "/" });
+              }}
+            >
+              <LogOut /> <span className="hidden sm:inline">Keluar</span>
+            </Button>
+          ) : (
+            <Button asChild variant="outline">
+              <Link to="/auth">
+                <LogIn /> Masuk
+              </Link>
+            </Button>
+          )}
         </header>
         <main className="mx-auto w-full max-w-7xl p-4 md:p-8">{children}</main>
       </div>
@@ -51,6 +136,12 @@ export function StudyShell({ children, title, kicker }: { children: ReactNode; t
   );
 }
 
-export function PaperCard({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function PaperCard({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return <section className={`paper-card ${className}`}>{children}</section>;
 }

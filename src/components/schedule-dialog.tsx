@@ -143,7 +143,7 @@ function ScheduleForm({
       <label className="grid gap-1.5 text-sm font-semibold">
         Nama agenda
         <input
-          className="field"
+          className="field w-full"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="mis. Basis Data"
@@ -155,7 +155,7 @@ function ScheduleForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1.5 text-sm font-semibold">
           Jenis
-          <select className="field" value={type} onChange={(e) => setType(e.target.value)}>
+          <select className="field w-full" value={type} onChange={(e) => setType(e.target.value)}>
             {ACTIVITY_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
@@ -165,7 +165,11 @@ function ScheduleForm({
         </label>
         <label className="grid gap-1.5 text-sm font-semibold">
           Mata kuliah
-          <select className="field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+          <select
+            className="field w-full"
+            value={courseId}
+            onChange={(e) => setCourseId(e.target.value)}
+          >
             <option value="">Tanpa mata kuliah</option>
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
@@ -179,7 +183,11 @@ function ScheduleForm({
       {type === "ujian" && (
         <label className="grid gap-1.5 text-sm font-semibold">
           Jenis ujian
-          <select className="field" value={examKind} onChange={(e) => setExamKind(e.target.value)}>
+          <select
+            className="field w-full"
+            value={examKind}
+            onChange={(e) => setExamKind(e.target.value)}
+          >
             {EXAM_KINDS.map((k) => (
               <option key={k.value} value={k.value}>
                 {k.label}
@@ -204,7 +212,7 @@ function ScheduleForm({
         <label className="grid gap-1.5 text-sm font-semibold">
           Mulai
           <input
-            className="field"
+            className="field w-full"
             type="datetime-local"
             value={start}
             onChange={(e) => setStart(e.target.value)}
@@ -213,7 +221,7 @@ function ScheduleForm({
         <label className="grid gap-1.5 text-sm font-semibold">
           Selesai
           <input
-            className="field"
+            className="field w-full"
             type="datetime-local"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
@@ -224,7 +232,7 @@ function ScheduleForm({
       <label className="grid gap-1.5 text-sm font-semibold">
         Lokasi
         <input
-          className="field"
+          className="field w-full"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="mis. R. 204 atau Lab 1"
@@ -234,7 +242,7 @@ function ScheduleForm({
       <label className="grid gap-1.5 text-sm font-semibold">
         Catatan
         <textarea
-          className="field min-h-20"
+          className="field min-h-20 w-full"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />

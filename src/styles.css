@@ -21,6 +21,7 @@
 @theme inline {
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Bree Serif", Georgia, serif;
+  --font-hand: "Gaegu", "Patrick Hand", "Comic Sans MS", cursive;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -156,6 +157,7 @@
 }
 
 .font-display { font-family: var(--font-display); letter-spacing: 0; }
+.font-hand { font-family: var(--font-hand); letter-spacing: 0; }
 .paper-card { border: 1px solid var(--border); background: var(--card); padding: 1.25rem; border-radius: var(--radius); box-shadow: 3px 3px 0 color-mix(in oklab, var(--primary) 15%, transparent); }
 .hero-band { background: linear-gradient(110deg, var(--study-sage), var(--secondary) 60%, var(--study-pink)); min-height: 290px; }
 .section-kicker { color: var(--primary); font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; }
@@ -164,10 +166,23 @@
 .agenda-row:last-child { border-bottom: 0; }.agenda-row time { width: 3.4rem; font-weight: 900; font-size: .78rem; }.agenda-row h3 { font-family: var(--font-display); font-weight: 700; }.agenda-row p { display:flex; align-items:center; gap:.3rem; color:var(--muted-foreground); font-size:.75rem; margin-top:.15rem; }.agenda-row p svg { width:.75rem; }.agenda-dot { width:.65rem; height:.65rem; border-radius:999px; flex:0 0 auto; }
 .mini-file { display:flex; gap:.75rem; align-items:center; border:1px solid var(--border); border-radius:var(--radius); padding:.8rem; }.mini-file>span { display:grid; place-items:center; width:2.6rem; height:2.8rem; border-radius:.3rem; background:var(--destructive); color:var(--destructive-foreground); font-size:.65rem; font-weight:900; }.mini-file p{font-size:.7rem;color:var(--muted-foreground)}
 .cow-pattern { background-color: var(--secondary); background-image: radial-gradient(ellipse at 15% 20%, var(--foreground) 0 5%, transparent 6%),radial-gradient(ellipse at 82% 75%, var(--foreground) 0 7%, transparent 8%); background-size:120px 100px; }
-.field { min-height:2.75rem; border:1px solid var(--input); border-radius:var(--radius); background:var(--background); padding:.65rem .8rem; outline:none; }.field:focus { box-shadow:0 0 0 2px var(--ring); }
+.field { min-width:0; min-height:2.75rem; border:1px solid var(--input); border-radius:var(--radius); background:var(--background); padding:.65rem .8rem; outline:none; }.field:focus { box-shadow:0 0 0 2px var(--ring); }
 .bg-grid { background-image: linear-gradient(to bottom, color-mix(in oklab,var(--border) 35%,transparent) 1px, transparent 1px); background-size:100% 55px; }
 .schedule-note { min-height:120px; border:1px solid var(--border); border-left-width:5px; border-radius:var(--radius); padding:.75rem; box-shadow:2px 2px 0 color-mix(in oklab,var(--foreground) 10%,transparent); }.tone-sage{background:var(--study-sage);border-left-color:var(--primary)}.tone-pink{background:var(--study-pink);border-left-color:var(--destructive)}.tone-red{background:color-mix(in oklab,var(--destructive) 18%,var(--card));border-left-color:var(--destructive)}.tone-mustard{background:var(--study-mustard);border-left-color:var(--accent)}
 .timer-ring { width:min(70vw,300px); aspect-ratio:1; border-radius:50%; display:grid; place-items:center; }.timer-ring>div { width:82%; aspect-ratio:1; display:grid; place-content:center; border-radius:50%; background:var(--card); }.timer-ring span { display:block; font-family:var(--font-display); font-size:clamp(3rem,9vw,5rem); font-weight:700; line-height:1; }.timer-ring small { display:block; margin-top:.7rem; color:var(--muted-foreground); }
 .bg-checker { background-color:var(--study-sage); background-image:linear-gradient(45deg,color-mix(in oklab,var(--primary) 18%,transparent) 25%,transparent 25%,transparent 75%,color-mix(in oklab,var(--primary) 18%,transparent) 75%),linear-gradient(45deg,color-mix(in oklab,var(--primary) 18%,transparent) 25%,transparent 25%,transparent 75%,color-mix(in oklab,var(--primary) 18%,transparent) 75%);background-position:0 0,22px 22px;background-size:44px 44px;}
 .cow-mark { position:relative; flex:none; border:2px solid var(--foreground); border-radius:48% 48% 45% 45%; background:var(--card); }.cow-ear { position:absolute; top:22%; width:30%; height:23%; border:2px solid var(--foreground); background:var(--study-pink); }.cow-ear-left{left:-21%;border-radius:80% 20% 70% 30%;transform:rotate(15deg)}.cow-ear-right{right:-21%;border-radius:20% 80% 30% 70%;transform:rotate(-15deg)}.cow-spot{position:absolute;background:var(--foreground);border-radius:50%}.cow-spot-one{left:8%;top:8%;width:30%;height:27%;transform:rotate(-20deg)}.cow-spot-two{right:5%;top:24%;width:23%;height:29%}.cow-eye{position:absolute;top:46%;width:7%;height:9%;border-radius:50%;background:var(--foreground)}.cow-eye-left{left:27%}.cow-eye-right{right:27%}.cow-muzzle{position:absolute;left:22%;right:22%;bottom:10%;height:29%;border:1px solid color-mix(in oklab,var(--destructive) 50%,var(--foreground));border-radius:50%;background:var(--study-pink)}.cow-muzzle i{position:absolute;top:42%;width:7%;height:12%;border-radius:50%;background:var(--foreground)}.cow-muzzle i:first-child{left:32%}.cow-muzzle i:last-child{right:32%}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* ---- layar selamat datang ---- */
+.pasture { background-color: oklch(0.5 0.085 122); background-image: radial-gradient(color-mix(in oklab, white 10%, transparent) 1.5px, transparent 1.5px), radial-gradient(color-mix(in oklab, black 9%, transparent) 1px, transparent 1px); background-size: 26px 26px, 17px 17px; background-position: 0 0, 9px 11px; }
+.poster { border: 2px solid var(--foreground); border-radius: 14px; background: var(--card); box-shadow: 7px 7px 0 color-mix(in oklab, black 22%, transparent); overflow: hidden; }
+.checker-strip { height: 18px; background: repeating-conic-gradient(var(--study-pink) 0 25%, var(--card) 0 50%) 0 0 / 36px 36px; border-bottom: 2px solid var(--foreground); }
+.pat-stars { background-color: var(--card); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Cpath d='M18 6l2.6 5.5 6 .7-4.4 4.1 1.2 6L18 19.4l-5.4 2.9 1.2-6-4.4-4.1 6-.7z' fill='%23b3382a'/%3E%3C/svg%3E"); }
+.pat-flowers { background-color: var(--card); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='%23e58f9a'%3E%3Ccircle cx='22' cy='12' r='5.5'/%3E%3Ccircle cx='32' cy='22' r='5.5'/%3E%3Ccircle cx='22' cy='32' r='5.5'/%3E%3Ccircle cx='12' cy='22' r='5.5'/%3E%3C/g%3E%3Ccircle cx='22' cy='22' r='4.5' fill='%23e3b23c'/%3E%3C/svg%3E"); }
+.pat-check { background: repeating-conic-gradient(var(--study-pink) 0 25%, var(--card) 0 50%) 0 0 / 32px 32px; }
+.pat-spots { background-color: var(--card); background-image: radial-gradient(ellipse at 18% 30%, var(--foreground) 0 14%, transparent 15%), radial-gradient(ellipse at 72% 62%, var(--foreground) 0 18%, transparent 19%), radial-gradient(ellipse at 92% 18%, var(--foreground) 0 9%, transparent 10%); background-size: 140px 80px; }
+.sticker { transition: transform .18s ease; }
+.sticker:hover { transform: rotate(0deg) translateY(-3px); }
+@keyframes pop-in { from { opacity: 0; transform: translateY(22px) rotate(-4deg) scale(.94); } to { opacity: 1; transform: none; } }
+.mascot-in { animation: pop-in .8s cubic-bezier(.2, .9, .3, 1.15) both; }
