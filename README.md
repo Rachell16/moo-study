@@ -1,0 +1,86 @@
+# Moo Study
+
+Ruang belajar pribadi: jadwal kuliah, tugas dengan deadline, hitung mundur UTS/UAS, dan materi (PDF/PPT) per mata kuliah. Jadwal tersambung dua arah ke Google Calendar.
+
+TanStack Start (React) + Supabase (Postgres, Auth, Storage). Tidak lagi bergantung pada Lovable.
+
+## Fitur
+
+- **Jadwal**: kalender mingguan. Tombol **Impor jadwal kuliah** membaca jadwal dari teks chat (hari, jam, mata kuliah, ruangan, PJ), lalu mengulangnya tiap minggu.
+- **Tugas**: tempel daftar tugas, nama, tanggal, dan jam terbaca otomatis. Tanda ‼️ berarti penting. Singkatan seperti SMA, ML, CV dihubungkan ke mata kuliahnya. Tiap tugas jadi blok 30 menit di Jadwal yang berakhir di deadline.
+- **Ujian**: hitung mundur UTS/UAS per mata kuliah, plus progres materi yang sudah dan belum di-review.
+- **Materi**: dikelompokkan per mata kuliah, lalu per Kuliah dan Praktikum. Tiap file ditandai untuk UTS atau UAS dan punya status review.
+- **Google Calendar**: agenda, deadline tugas, dan ujian ikut tersinkron. Ada pengingat otomatis (tugas H-1 dan 3 jam, ujian H-3 dan H-1).
+
+## Menjalankan di laptop
+
+Butuh Node.js 22.18 atau lebih baru.
+
+1. Buat project di https://supabase.com (paket Free cukup).
+2. Buat tabelnya: buka **SQL Editor**, jalankan isi tiga file di `supabase/migrations/` **berurutan** (nama file yang lebih kecil dulu). Atau pakai Supabase CLI: `supabase link --project-ref XXXX` lalu `supabase db push`.
+3. Salin `.env.example` jadi `.env`, isi dari **Project Settings > API** (URL, publishable key, dan service_role key).
+4. Di **Authentication > Providers**, pastikan Email aktif. Di **Authentication > URL Configuration**, isi Site URL `http://localhost:3000` dan tambahkan alamat yang sama di Redirect URLs.
+5. Jalankan:
+
+```bash
+npm install
+npm run dev
+```
+
+Buka http://localhost:3000, klik **Masuk**, buat akun, lalu buka **Jadwal > Impor jadwal kuliah**.
+
+`SUPABASE_SERVICE_ROLE_KEY` hanya dipakai server (untuk menyimpan token Google). Jangan diberi awalan `VITE_` dan jangan di-commit.
+
+## Login dengan Google (opsional)
+
+Tombol "Lanjutkan dengan Google" di halaman masuk memakai Supabase Auth langsung. Aktifkan di **Authentication > Providers > Google**, isi Client ID dan Secret dari Google Cloud, lalu daftarkan `https://XXXX.supabase.co/auth/v1/callback` sebagai Authorized redirect URI di Google Cloud. Ini terpisah dari sinkron kalender di bawah.
+
+## Sinkron Google Calendar
+
+1. Di https://console.cloud.google.com buat project, aktifkan **Google Calendar API**, isi **OAuth consent screen** (External, tambahkan emailmu di Test users), lalu buat **OAuth client ID** tipe Web application.
+2. Di *Authorized redirect URIs* daftarkan tiap alamat yang dipakai, satu baris per domain:
+   - `http://localhost:3000/api/google/callback`
+   - `https://DOMAIN-DEPLOY-KAMU/api/google/callback`
+3. Isi `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` di `.env` (dan di environment hosting). Opsional: `TIMEZONE` (bawaan `Asia/Jakarta`).
+4. Buka **Jadwal**, klik **Hubungkan**, lalu izinkan akses kalender.
+
+Cara kerjanya:
+- Agenda yang dibuat atau diubah ditandai `lokal`, lalu dikirim ke Google (jadi `tersinkron`). Yang gagal ditandai `gagal` dan dicoba lagi.
+- Pengiriman bertahap, 30 agenda per panggilan, jadi impor jadwal satu semester (ratusan agenda) tidak membuat server kehabisan waktu. Progresnya tampil di kartu Google Calendar.
+- Perubahan dari Google ditarik untuk rentang 30 hari ke belakang sampai 120 hari ke depan, otomatis saat halaman Jadwal dibuka dan tiap 5 menit.
+- Dihapus di satu sisi, ikut terhapus di sisi lain. Kalau diubah di dua tempat sebelum sempat sinkron, versi dari aplikasi ini yang menang.
+- Deadline tugas tampil di Google sebagai "Deadline: nama tugas", berwarna merah tomat kalau penting.
+- Kegiatan seharian di Google dilewati (jadwal butuh jam mulai dan selesai).
+- Selama app Google berstatus *Testing*, izin habis tiap 7 hari. Klik Hubungkan lagi kalau muncul pesan izin kedaluwarsa.
+
+Refresh token disimpan di tabel `google_connections` yang tidak bisa dibaca dari browser (RLS aktif tanpa policy), hanya server yang mengaksesnya. Login Google memakai `state` bertanda tangan HMAC.
+
+## Deploy
+
+Bawaannya build untuk **Vercel**: push repo ke GitHub, import di Vercel, isi environment variables dari `.env.example`, deploy. Untuk host lain set `NITRO_PRESET` saat build, misalnya `node-server` (VPS, Docker, Railway, Render), `netlify`, atau `cloudflare-module`.
+
+Setelah dapat domainnya: tambahkan ke Redirect URLs di Supabase, dan ke Authorized redirect URIs di Google Cloud (langkah sinkron di atas).
+
+## Tes
+
+```bash
+npm test          # parser tugas, parser jadwal kuliah, singkatan mata kuliah
+npm run typecheck
+```
+
+## Struktur
+
+```
+src/routes/            halaman (jadwal, tugas, ujian, materi, timer, auth) + api/google/callback
+src/lib/               parser (parse-tasks, parse-timetable), sinkron Google (google.server.ts), server functions
+src/hooks/             data (react-query), sesi login, sinkron Google
+src/components/        dialog dan komponen UI
+supabase/migrations/   skema database (jalankan berurutan)
+tests/                 tes parser
+```
+
+## Catatan pindah dari Lovable
+
+- Konfigurasi Vite, login Google, dan penyimpanan sesi sudah dibuat mandiri. File khusus Lovable dihapus.
+- Data di database Lovable Cloud tidak ikut pindah. Kalau ada yang perlu dibawa, ekspor dari tabelnya dan impor ke project Supabase barumu.
+- `src/integrations/supabase/types.ts` ditulis manual mengikuti migrasi. Kalau skema berubah, buat ulang dengan `supabase gen types typescript --project-id XXXX`.
