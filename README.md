@@ -9,6 +9,7 @@ TanStack Start (React) + Supabase (Postgres, Auth, Storage). Tidak lagi bergantu
 - **Jadwal**: kalender mingguan. Ketik satu kalimat di kotak atas, mis. "rapat hima hari rabu jam 12.00", dan hari, jam, serta lokasinya (kata "di …") dibaca otomatis lalu langsung dijadwalkan. Tombol **Impor jadwal kuliah** membaca jadwal dari teks chat (hari, jam, mata kuliah, ruangan, PJ), lalu mengulangnya tiap minggu.
 - **Tugas**: tempel daftar tugas, nama, tanggal, dan jam terbaca otomatis. Tanda ‼️ berarti penting. Singkatan seperti SMA, ML, CV dihubungkan ke mata kuliahnya. Tiap tugas jadi blok 30 menit di Jadwal yang berakhir di deadline.
 - **Ujian**: hitung mundur UTS/UAS per mata kuliah, plus progres materi yang sudah dan belum di-review.
+- **Timer**: preset Pomodoro (25/5, 50/10, 90/20) atau angka sendiri, istirahat panjang tiap beberapa sesi, mulai otomatis, dan bunyi saat selesai. Sesi fokus yang selesai tercatat, jadi streak dan ringkasan "sesi hari ini" nyata. Streak kembali ke 0 kalau ada hari yang terlewat.
 - **Materi**: dikelompokkan per mata kuliah, lalu per Kuliah dan Praktikum. Tiap file ditandai untuk UTS atau UAS dan punya status review.
 - **Google Calendar**: agenda, deadline tugas, dan ujian ikut tersinkron. Ada pengingat otomatis (tugas H-1 dan 3 jam, ujian H-3 dan H-1).
 
