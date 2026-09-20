@@ -115,7 +115,7 @@ export function WelcomeScreen() {
                   className="mascot-in relative mx-auto w-full max-w-[420px]"
                 />
                 <div className="font-hand absolute right-[48%] top-1 max-w-[9.5rem] -rotate-3 rounded-2xl border-2 border-foreground bg-card px-3 py-1.5 text-center text-xl font-bold leading-tight">
-                  muuu~ jadwalmu aman di sini!
+                  mooo~ jadwalmu aman di sini!
                   <span
                     className="absolute -bottom-[9px] right-5 h-4 w-4 rotate-45 border-b-2 border-r-2 border-foreground bg-card"
                     aria-hidden="true"
@@ -144,7 +144,7 @@ export function WelcomeScreen() {
         </main>
 
         <footer className="font-hand mt-10 text-center text-xl opacity-90">
-          dibuat dengan banyak rumput dan sedikit muuu
+          dibuat dengan banyak rumput dan sedikit moooo~
         </footer>
       </div>
     </div>
