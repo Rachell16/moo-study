@@ -19,9 +19,13 @@ export const EXAM_KINDS = [
 
 export const COURSE_COLORS = [
   { value: "sage", label: "Hijau" },
-  { value: "pink", label: "Merah muda" },
+  { value: "pink", label: "Pink" },
   { value: "red", label: "Merah" },
   { value: "mustard", label: "Kuning" },
+  { value: "sky", label: "Biru" },
+  { value: "lilac", label: "Ungu" },
+  { value: "peach", label: "Oranye" },
+  { value: "mint", label: "Tosca" },
 ] as const;
 
 const TONE_BY_ACTIVITY: Record<string, string> = {

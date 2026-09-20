@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { defaultAliases } from "@/lib/course-aliases";
 import { COURSE_COLORS, type Course } from "@/lib/schedule-utils";
 
 type Props = {
@@ -19,13 +20,40 @@ type Props = {
   onChanged: () => void;
 };
 
+function ColorSwatches({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+  label: string;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      {COURSE_COLORS.map((c) => (
+        <button
+          key={c.value}
+          type="button"
+          className={`swatch tone-${c.value}`}
+          aria-pressed={value === c.value}
+          aria-label={c.label}
+          title={c.label}
+          onClick={() => onChange(c.value)}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }: Props) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [lecturer, setLecturer] = useState("");
-  const [color, setColor] = useState("sage");
+  const [color, setColor] = useState<string>("sage");
   const [semester, setSemester] = useState(1);
   const [error, setError] = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const add = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,6 +64,7 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
       code: code.trim(),
       lecturer: lecturer.trim() || null,
       color,
+      alias: defaultAliases(name.trim()).join(", "),
       semester: Math.min(Math.max(semester, 1), 20),
     });
     if (err) return setError(err.message);
@@ -46,9 +75,19 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
     onChanged();
   };
 
-  const remove = async (id: string) => {
-    const { error: err } = await supabase.from("courses").delete().eq("id", id);
+  const changeColor = async (c: Course, next: string) => {
+    if (c.color === next) return;
+    const { error: err } = await supabase.from("courses").update({ color: next }).eq("id", c.id);
     if (err) return setError(err.message);
+    setError("");
+    onChanged();
+  };
+
+  const remove = async (c: Course) => {
+    if (confirmId !== c.id) return setConfirmId(c.id);
+    const { error: err } = await supabase.from("courses").delete().eq("id", c.id);
+    if (err) return setError(err.message);
+    setConfirmId(null);
     onChanged();
   };
 
@@ -58,43 +97,52 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">Mata kuliah</DialogTitle>
           <DialogDescription>
-            Warna mata kuliah dipakai di kartu jadwal. Menghapus mata kuliah tidak menghapus
-            agendanya.
+            Klik lingkaran warna untuk mengganti warna kartunya di jadwal. Menghapus mata kuliah
+            tidak menghapus agendanya.
           </DialogDescription>
         </DialogHeader>
 
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-2">
           {courses.length === 0 && (
             <li className="text-sm text-muted-foreground">
               Belum ada mata kuliah. Tambahkan yang pertama di bawah.
             </li>
           )}
           {courses.map((c) => (
-            <li
-              key={c.id}
-              className={`schedule-note tone-${c.color} flex min-h-0 items-center gap-3 py-2`}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-display font-bold">{c.name}</p>
-                <p className="truncate text-xs">
-                  {c.code} · Semester {c.semester}
-                  {c.lecturer ? ` · ${c.lecturer}` : ""}
-                </p>
+            <li key={c.id} className={`course-row tone-${c.color} min-w-0`}>
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-display font-bold leading-tight">{c.name}</p>
+                  <p className="truncate text-xs">
+                    {c.code}, semester {c.semester}
+                    {c.lecturer ? `, ${c.lecturer}` : ""}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={confirmId === c.id ? "text-destructive" : ""}
+                  onClick={() => void remove(c)}
+                  onBlur={() => setConfirmId(null)}
+                  aria-label={`Hapus ${c.name}`}
+                >
+                  <Trash2 /> {confirmId === c.id ? "Yakin?" : ""}
+                </Button>
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => void remove(c.id)}
-                aria-label={`Hapus ${c.name}`}
-              >
-                <Trash2 />
-              </Button>
+              <div className="mt-2.5">
+                <ColorSwatches
+                  value={c.color}
+                  onChange={(next) => void changeColor(c, next)}
+                  label={`Warna ${c.name}`}
+                />
+              </div>
             </li>
           ))}
         </ul>
 
         <form onSubmit={add} className="grid gap-3 border-t border-border pt-4">
-          <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
+          <p className="text-sm font-semibold">Tambah mata kuliah</p>
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
             <input
               className="field w-full"
               value={name}
@@ -112,26 +160,14 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
               aria-label="Kode"
             />
           </div>
-          <input
-            className="field w-full"
-            value={lecturer}
-            onChange={(e) => setLecturer(e.target.value)}
-            placeholder="Dosen (opsional)"
-            aria-label="Dosen"
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <select
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+            <input
               className="field w-full"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              aria-label="Warna"
-            >
-              {COURSE_COLORS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  Warna {c.label.toLowerCase()}
-                </option>
-              ))}
-            </select>
+              value={lecturer}
+              onChange={(e) => setLecturer(e.target.value)}
+              placeholder="Dosen (opsional)"
+              aria-label="Dosen"
+            />
             <input
               className="field w-full"
               type="number"
@@ -140,8 +176,10 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
               value={semester}
               onChange={(e) => setSemester(Number(e.target.value) || 1)}
               aria-label="Semester"
+              title="Semester"
             />
           </div>
+          <ColorSwatches value={color} onChange={setColor} label="Warna mata kuliah baru" />
           {error && (
             <p className="text-sm font-semibold text-destructive" role="alert">
               {error}

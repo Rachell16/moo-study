@@ -186,3 +186,14 @@
 .sticker:hover { transform: rotate(0deg) translateY(-3px); }
 @keyframes pop-in { from { opacity: 0; transform: translateY(22px) rotate(-4deg) scale(.94); } to { opacity: 1; transform: none; } }
 .mascot-in { animation: pop-in .8s cubic-bezier(.2, .9, .3, 1.15) both; }
+
+/* ---- warna mata kuliah ---- */
+.tone-sage{--tone:var(--study-sage)}.tone-pink{--tone:var(--study-pink)}.tone-red{--tone:color-mix(in oklab,var(--destructive) 18%,var(--card))}.tone-mustard{--tone:var(--study-mustard)}
+.tone-sky{--tone:oklch(.87 .055 235);background:var(--tone);border-left-color:oklch(.5 .1 240)}
+.tone-lilac{--tone:oklch(.88 .055 305);background:var(--tone);border-left-color:oklch(.5 .12 305)}
+.tone-peach{--tone:oklch(.89 .08 60);background:var(--tone);border-left-color:oklch(.62 .13 50)}
+.tone-mint{--tone:oklch(.89 .07 175);background:var(--tone);border-left-color:oklch(.5 .09 175)}
+.course-row{border-style:solid;border-width:1px 1px 1px 5px;border-top-color:var(--border);border-right-color:var(--border);border-bottom-color:var(--border);border-radius:var(--radius);padding:.65rem .8rem}
+.swatch{width:1.6rem;height:1.6rem;flex:none;border-radius:999px;border:2px solid var(--border);background:var(--tone);cursor:pointer}
+.swatch[aria-pressed="true"]{border-color:var(--foreground);box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--primary)}
+@media (prefers-reduced-motion: no-preference){.swatch{transition:transform .12s}.swatch:hover{transform:scale(1.12)}}
