@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { deleteSchedule } from "@/lib/calendar.functions";
 import {
   ACTIVITY_TYPES,
@@ -19,6 +20,7 @@ import {
   type Course,
   type Schedule,
 } from "@/lib/schedule-utils";
+import { chunk, pickSeries, shiftToTimeOfDay, timeOfDayChanged, type Scope } from "@/lib/series";
 
 type Props = {
   open: boolean;
@@ -67,7 +69,28 @@ function ScheduleForm({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [scope, setScope] = useState<Scope>("one");
+  const [series, setSeries] = useState<{ id: string; starts_at: string }[]>([]);
   const removeSchedule = useServerFn(deleteSchedule);
+
+  // Kegiatan lain dengan judul dan jenis yang sama (mis. kuliah yang sama tiap minggu)
+  useEffect(() => {
+    if (!schedule) return;
+    let live = true;
+    supabase
+      .from("schedules")
+      .select("id,starts_at")
+      .eq("title", schedule.title)
+      .eq("activity_type", schedule.activity_type)
+      .order("starts_at")
+      .then(({ data }) => {
+        if (live && data) setSeries(data);
+      });
+    return () => {
+      live = false;
+    };
+  }, [schedule]);
+  const followingCount = schedule ? pickSeries(series, schedule, "following").length : 0;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -96,7 +119,57 @@ function ScheduleForm({
         .update({ ...base, starts_at: s.toISOString(), ends_at: en.toISOString() })
         .eq("id", schedule.id);
       if (err) return fail(err.message);
-      onSaved("Agenda diperbarui.");
+
+      // Terapkan juga ke kegiatan lain: hanya bagian yang benar-benar kamu ubah
+      let updated = 1;
+      const others = pickSeries(series, schedule, scope);
+      const patch: Database["public"]["Tables"]["schedules"]["Update"] = {};
+      if (base.title !== schedule.title) patch.title = base.title;
+      if (base.activity_type !== schedule.activity_type) patch.activity_type = base.activity_type;
+      if (base.course_id !== schedule.course_id) patch.course_id = base.course_id;
+      if (base.location !== (schedule.location ?? null)) patch.location = base.location;
+      if (base.notes !== (schedule.notes ?? null)) patch.notes = base.notes;
+      if (type === "tugas" && urgent !== schedule.urgent) patch.urgent = urgent;
+      const timeChanged = timeOfDayChanged(schedule, { start: s, end: en });
+
+      if (others.length && (Object.keys(patch).length || timeChanged)) {
+        // perubahan jadwal, judul, lokasi, dan catatan perlu dikirim ulang ke Google, mata kuliah saja tidak
+        const visible =
+          timeChanged ||
+          ["title", "location", "notes", "activity_type", "urgent"].some((k) => k in patch);
+        const extra = visible ? { sync_status: "lokal" } : {};
+        if (timeChanged) {
+          for (const group of chunk(others, 10)) {
+            const results = await Promise.all(
+              group.map((r) =>
+                supabase
+                  .from("schedules")
+                  .update({
+                    ...patch,
+                    ...extra,
+                    ...shiftToTimeOfDay(r.starts_at, { start: s, end: en }),
+                  })
+                  .eq("id", r.id),
+              ),
+            );
+            const bad = results.find((x) => x.error);
+            if (bad?.error) return fail(bad.error.message);
+          }
+        } else {
+          for (const ids of chunk(
+            others.map((r) => r.id),
+            50,
+          )) {
+            const { error: err2 } = await supabase
+              .from("schedules")
+              .update({ ...patch, ...extra })
+              .in("id", ids);
+            if (err2) return fail(err2.message);
+          }
+        }
+        updated += others.length;
+      }
+      onSaved(updated > 1 ? `${updated} kegiatan diperbarui.` : "Agenda diperbarui.");
     } else {
       const n = Math.min(Math.max(count, 1), 20);
       const rows = Array.from({ length: n }, (_, i) => ({
@@ -263,6 +336,35 @@ function ScheduleForm({
             Isi 1 untuk sekali saja. Isi 16 untuk satu semester penuh.
           </span>
         </label>
+      )}
+
+      {editing && series.length > 1 && (
+        <fieldset className="grid gap-2 rounded-md border border-border p-3">
+          <legend className="px-1 text-sm font-semibold">Terapkan perubahan ke</legend>
+          {(
+            [
+              ["one", "Hanya kegiatan ini"],
+              ...(followingCount > 0
+                ? [["following", `Kegiatan ini dan ${followingCount} berikutnya`]]
+                : []),
+              ["all", `Semua ${series.length} kegiatan “${schedule?.title ?? ""}”`],
+            ] as [Scope, string][]
+          ).map(([value, label]) => (
+            <label key={value} className="flex cursor-pointer items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="scope"
+                className="mt-1 accent-[var(--primary)]"
+                checked={scope === value}
+                onChange={() => setScope(value)}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            Hanya yang kamu ubah yang ikut berganti. Tanggal tiap kegiatan tidak berubah.
+          </p>
+        </fieldset>
       )}
 
       {error && (

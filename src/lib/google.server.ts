@@ -1,6 +1,7 @@
 // Hanya untuk server. Jangan diimpor dari komponen; muat lewat `await import()` di dalam handler.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { matchCourse } from "@/lib/course-aliases";
 
 type Db = SupabaseClient<Database>;
 type ScheduleRow = Database["public"]["Tables"]["schedules"]["Row"];
@@ -406,6 +407,8 @@ export async function syncForUser(db: Db, userId: string): Promise<SyncResult> {
     pageToken = page.nextPageToken;
   } while (pageToken);
 
+  const { data: courseRows } = await db.from("courses").select("id,name,code,alias");
+
   const { data: existingRows, error: exErr } = await db
     .from("schedules")
     .select("*")
@@ -420,7 +423,13 @@ export async function syncForUser(db: Db, userId: string): Promise<SyncResult> {
     if (!f) return;
     const ex = byGid.get(it.id);
     if (!ex) {
-      inserts.push({ ...f, user_id: userId, google_event_id: it.id, sync_status: "tersinkron" });
+      inserts.push({
+        ...f,
+        user_id: userId,
+        google_event_id: it.id,
+        sync_status: "tersinkron",
+        course_id: matchCourse(f.title, courseRows ?? [])?.id ?? null, // dicocokkan dari judul, mis. "E-Commerce (32)"
+      });
       return;
     }
     if (ex.sync_status === "lokal") return; // perubahan lokal menang, akan dikirim di sinkron berikutnya

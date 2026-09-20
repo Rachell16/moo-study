@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { Trash2 } from "lucide-react";
+import { Link2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { defaultAliases } from "@/lib/course-aliases";
+import { autoLinkSchedules } from "@/lib/link-courses";
 import { COURSE_COLORS, type Course } from "@/lib/schedule-utils";
 
 type Props = {
@@ -58,20 +60,31 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
   const add = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !code.trim()) return setError("Nama dan kode mata kuliah wajib diisi.");
-    const { error: err } = await supabase.from("courses").insert({
-      user_id: userId,
-      name: name.trim(),
-      code: code.trim(),
-      lecturer: lecturer.trim() || null,
-      color,
-      alias: defaultAliases(name.trim()).join(", "),
-      semester: Math.min(Math.max(semester, 1), 20),
-    });
+    const { data: created, error: err } = await supabase
+      .from("courses")
+      .insert({
+        user_id: userId,
+        name: name.trim(),
+        code: code.trim(),
+        lecturer: lecturer.trim() || null,
+        color,
+        alias: defaultAliases(name.trim()).join(", "),
+        semester: Math.min(Math.max(semester, 1), 20),
+      })
+      .select()
+      .single();
     if (err) return setError(err.message);
     setName("");
     setCode("");
     setLecturer("");
     setError("");
+    // agenda yang judulnya cocok langsung dihubungkan ke mata kuliah baru ini
+    try {
+      const n = await autoLinkSchedules([...courses, created]);
+      if (n) toast.success(`${n} agenda dihubungkan ke mata kuliah.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menghubungkan agenda.");
+    }
     onChanged();
   };
 
@@ -81,6 +94,21 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
     if (err) return setError(err.message);
     setError("");
     onChanged();
+  };
+
+  // Cocokkan agenda yang belum punya mata kuliah dari judulnya
+  const relink = async () => {
+    try {
+      const n = await autoLinkSchedules(courses);
+      toast(
+        n
+          ? `${n} agenda dihubungkan ke mata kuliah.`
+          : "Tidak ada agenda yang cocok atau semuanya sudah terhubung.",
+      );
+      if (n) onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menghubungkan agenda.");
+    }
   };
 
   const remove = async (c: Course) => {
@@ -101,6 +129,16 @@ export function CoursesDialog({ open, onOpenChange, userId, courses, onChanged }
             tidak menghapus agendanya.
           </DialogDescription>
         </DialogHeader>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-fit"
+          onClick={() => void relink()}
+          disabled={courses.length === 0}
+        >
+          <Link2 /> Hubungkan agenda otomatis
+        </Button>
 
         <ul className="grid grid-cols-[minmax(0,1fr)] gap-2">
           {courses.length === 0 && (
