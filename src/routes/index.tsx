@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { WelcomeScreen } from "@/components/welcome-screen";
+import { NameDialog } from "@/components/name-dialog";
 import cowMascot from "@/assets/cow-mascot.png";
 import {
   useCourses,
@@ -51,7 +52,8 @@ function greetingFor(hour: number) {
 }
 
 function Index() {
-  const { loading, userId } = useSession();
+  const { loading, userId, name: userName } = useSession();
+  const [nameOpen, setNameOpen] = useState(false);
   // Tanggal dan salam dihitung setelah tampil di browser supaya tidak beda dengan hasil render server.
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
@@ -112,7 +114,7 @@ function Index() {
 
   return (
     <StudyShell
-      title={`${now ? greetingFor(now.getHours()) : "Halo"}, Rachel!`}
+      title={`${now ? greetingFor(now.getHours()) : "Halo"}, ${userName || "kamu"}!`}
       kicker={
         now
           ? now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })
@@ -135,6 +137,13 @@ function Index() {
               <Clock3 /> Mulai fokus <ArrowRight />
             </Link>
           </Button>
+          <button
+            type="button"
+            onClick={() => setNameOpen(true)}
+            className="mt-3 block text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Ganti nama panggilan
+          </button>
         </div>
         <img
           src={cowMascot}
@@ -260,6 +269,7 @@ function Index() {
           <p className="mt-4 text-sm font-semibold text-primary">— si sapi rajin</p>
         </PaperCard>
       </div>
+      <NameDialog open={nameOpen} onOpenChange={setNameOpen} current={userName} />
     </StudyShell>
   );
 }
