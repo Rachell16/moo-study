@@ -301,7 +301,7 @@ function MateriPage() {
             </p>
           )}
 
-          <div className="grid gap-5">
+          <div className="grid gap-5 grid-cols-[minmax(0,1fr)]">
             {sections.map(({ key, course, items }) => (
               <CourseSection
                 key={key}
@@ -382,7 +382,7 @@ function CourseSection({
                   Belum ada materi {kind}.
                 </p>
               ) : (
-                <ul className="grid gap-2">
+                <ul className="grid grid-cols-[minmax(0,1fr)] gap-2">
                   {list.map((m) => (
                     <MaterialRow
                       key={m.id}
@@ -420,7 +420,7 @@ function MaterialRow({
   const [confirming, setConfirming] = useState(false);
   const Icon = m.file_type === "pdf" ? FileText : Presentation;
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border bg-background p-2.5">
+    <li className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border bg-background p-2.5">
       <div
         className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${m.file_type === "pdf" ? "bg-study-sage" : "bg-study-pink"}`}
       >

@@ -154,11 +154,11 @@ function TugasPage() {
             />
 
             {preview.length > 0 && (
-              <ul className="mt-4 grid gap-2">
+              <ul className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-2">
                 {preview.map((p, i) => (
                   <li
                     key={`${i}-${p.raw}`}
-                    className={`flex items-start gap-3 rounded-md border px-3 py-2 text-sm ${p.error ? "border-destructive/50 bg-destructive/5" : "border-border bg-background"}`}
+                    className={`flex min-w-0 items-start gap-3 rounded-md border px-3 py-2 text-sm ${p.error ? "border-destructive/50 bg-destructive/5" : "border-border bg-background"}`}
                   >
                     {p.error ? (
                       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
@@ -223,7 +223,7 @@ function TugasPage() {
                 Tidak ada tugas yang menunggu. Tempel daftar tugas di atas kalau ada yang baru.
               </p>
             )}
-            <ul className="grid gap-3">
+            <ul className="grid grid-cols-[minmax(0,1fr)] gap-3">
               {open.map((t) => (
                 <TaskRow
                   key={t.id}
@@ -304,7 +304,7 @@ function TaskRow({
   const deadline = new Date(task.ends_at);
   const cd = countdownLabel(deadline);
   return (
-    <li className="paper-card flex items-start gap-3 py-4">
+    <li className="paper-card flex min-w-0 items-start gap-3 py-4">
       <input
         type="checkbox"
         className="mt-1.5 h-4 w-4 accent-[var(--primary)]"

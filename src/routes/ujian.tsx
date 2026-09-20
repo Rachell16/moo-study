@@ -91,7 +91,7 @@ function UjianPage() {
         </PaperCard>
       ) : (
         <>
-          <div className="mb-6 grid gap-5 lg:grid-cols-[1fr_auto]">
+          <div className="mb-6 grid gap-5 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_auto]">
             <PaperCard className="bg-study-pink">
               {next ? (
                 <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
@@ -145,14 +145,14 @@ function UjianPage() {
             </PaperCard>
           )}
 
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5 grid-cols-[minmax(0,1fr)] xl:grid-cols-2">
             {ordered.map((course) => (
               <PaperCard key={course.id} className="min-w-0">
                 <div className="mb-4">
                   <p className="section-kicker">{course.code}</p>
                   <h2 className="font-display text-xl font-bold">{course.name}</h2>
                 </div>
-                <div className="grid gap-6">
+                <div className="grid gap-6 grid-cols-[minmax(0,1fr)]">
                   {EXAM_KINDS.map((k) => (
                     <ExamBlock
                       key={k.value}
@@ -232,7 +232,7 @@ function ExamBlock({
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-display text-lg font-bold">{label}</h3>
         {exam ? (
@@ -292,7 +292,7 @@ function ExamBlock({
               <p className="text-xs font-bold text-destructive">
                 Perlu di-review ({pending.length})
               </p>
-              <ul className="mt-1.5 grid gap-1.5">
+              <ul className="mt-1.5 grid grid-cols-[minmax(0,1fr)] gap-1.5">
                 {pending.map((m) => (
                   <MaterialLine
                     key={m.id}
@@ -311,7 +311,7 @@ function ExamBlock({
               <summary className="cursor-pointer text-xs font-bold text-muted-foreground">
                 Sudah di-review ({reviewed.length})
               </summary>
-              <ul className="mt-1.5 grid gap-1.5">
+              <ul className="mt-1.5 grid grid-cols-[minmax(0,1fr)] gap-1.5">
                 {reviewed.map((m) => (
                   <MaterialLine
                     key={m.id}
@@ -345,26 +345,28 @@ function MaterialLine({
   onOpen: () => void;
 }) {
   return (
-    <li className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm">
+    <li className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm">
       <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 truncate" title={m.name}>
+      <span className="min-w-0 flex-1 basis-32 truncate" title={m.name}>
         {m.name}
       </span>
-      <span className="tag shrink-0">
-        {m.material_type === "praktikum" ? "Praktikum" : "Kuliah"}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={onOpen}
-        aria-label={`Buka ${m.name}`}
-      >
-        <ExternalLink />
-      </Button>
-      <Button variant={undo ? "ghost" : "outline"} size="sm" className="h-7" onClick={onAction}>
-        {undo && <Undo2 />} {action}
-      </Button>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        <span className="tag shrink-0">
+          {m.material_type === "praktikum" ? "Praktikum" : "Kuliah"}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={onOpen}
+          aria-label={`Buka ${m.name}`}
+        >
+          <ExternalLink />
+        </Button>
+        <Button variant={undo ? "ghost" : "outline"} size="sm" className="h-7" onClick={onAction}>
+          {undo && <Undo2 />} {action}
+        </Button>
+      </div>
     </li>
   );
 }
