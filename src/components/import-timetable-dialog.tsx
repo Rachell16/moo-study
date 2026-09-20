@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { defaultAliases } from "@/lib/course-aliases";
-import { SEMESTER_TIMETABLE } from "@/lib/my-timetable";
 import { buildTimetableRows } from "@/lib/timetable-rows";
 import {
   defaultSelection,
@@ -18,6 +17,13 @@ import {
   type ClassSession,
 } from "@/lib/parse-timetable";
 import { COURSE_COLORS, addDays, startOfWeek, ymd, type Course } from "@/lib/schedule-utils";
+
+const PLACEHOLDER = `*HARI SENIN*
+
+*10:00 - 11:40*
+Mata Kuliah: KEB1316 Sistem Multi-Agen (K/1)
+Ruangan: IPB W8 502
+PJ: Nama Dosen`;
 
 const DAY_LABEL = ["", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 const keyOf = (s: ClassSession) => `${s.day}|${s.start}|${s.code}|${s.kind}|${s.section}`;
@@ -48,7 +54,7 @@ function ImportForm({
   onImported,
   close,
 }: Omit<Props, "open" | "onOpenChange"> & { close: () => void }) {
-  const [text, setText] = useState(SEMESTER_TIMETABLE);
+  const [text, setText] = useState("");
   const [startDate, setStartDate] = useState(ymd(weekStart));
   const [weeks, setWeeks] = useState(14);
   const [semester, setSemester] = useState(1);
@@ -132,7 +138,7 @@ function ImportForm({
         <DialogTitle className="font-display text-2xl">Impor jadwal kuliah</DialogTitle>
         <DialogDescription>
           Tempel jadwal dari chat, centang kelas yang kamu ambil, lalu tiap kelas diulang setiap
-          minggu. Isi awalnya jadwal semester ini.
+          minggu.
         </DialogDescription>
       </DialogHeader>
 
