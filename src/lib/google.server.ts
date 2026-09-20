@@ -8,7 +8,7 @@ type ScheduleRow = Database["public"]["Tables"]["schedules"]["Row"];
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid", "email"].join(" ");
 const CAL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
-const ACTIVITY_TYPES = ["kuliah", "belajar", "praktikum", "tugas", "ujian"];
+const ACTIVITY_TYPES = ["kuliah", "belajar", "praktikum", "tugas", "ujian", "kegiatan"];
 const DEADLINE_PREFIX = "Deadline: ";
 const PUSH_BATCH = 15; // jumlah agenda yang dikirim per panggilan sinkron
 const MAX_RETRIES = 2; // ulangi permintaan yang kena batas kecepatan Google

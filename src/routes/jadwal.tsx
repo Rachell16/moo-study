@@ -17,6 +17,7 @@ import { PaperCard, StudyShell } from "@/components/study-shell";
 import { ScheduleDialog } from "@/components/schedule-dialog";
 import { CoursesDialog } from "@/components/courses-dialog";
 import { ImportTimetableDialog } from "@/components/import-timetable-dialog";
+import { QuickAdd } from "@/components/quick-add";
 import { useCourses, useInvalidateData, useSchedulesBetween } from "@/hooks/use-schedules";
 import { useGoogleCalendar } from "@/hooks/use-google-calendar";
 import { useSession } from "@/hooks/use-session";
@@ -170,6 +171,15 @@ function JadwalPage() {
               </Button>
             </div>
           </div>
+
+          <QuickAdd
+            userId={userId}
+            courses={courses.data ?? []}
+            onAdded={(start, message) => {
+              setWeekStart(startOfWeek(start));
+              onSaved(message);
+            }}
+          />
 
           <PaperCard className="mb-5 flex flex-wrap items-center gap-3 py-3">
             {google.status.isLoading ? (

@@ -10,6 +10,7 @@ export const ACTIVITY_TYPES = [
   { value: "belajar", label: "Belajar mandiri" },
   { value: "tugas", label: "Tugas (deadline)" },
   { value: "ujian", label: "Ujian" },
+  { value: "kegiatan", label: "Kegiatan" },
 ] as const;
 
 export const EXAM_KINDS = [
@@ -33,6 +34,8 @@ const TONE_BY_ACTIVITY: Record<string, string> = {
   praktikum: "red",
   belajar: "pink",
   tugas: "mustard",
+  ujian: "red",
+  kegiatan: "sky",
 };
 
 // Warna kartu: ikut warna mata kuliah, kalau tidak ada ikut jenis kegiatan.

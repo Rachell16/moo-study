@@ -6,7 +6,7 @@ TanStack Start (React) + Supabase (Postgres, Auth, Storage). Tidak lagi bergantu
 
 ## Fitur
 
-- **Jadwal**: kalender mingguan. Tombol **Impor jadwal kuliah** membaca jadwal dari teks chat (hari, jam, mata kuliah, ruangan, PJ), lalu mengulangnya tiap minggu.
+- **Jadwal**: kalender mingguan. Ketik satu kalimat di kotak atas, mis. "rapat hima hari rabu jam 12.00", dan hari, jam, serta lokasinya (kata "di …") dibaca otomatis lalu langsung dijadwalkan. Tombol **Impor jadwal kuliah** membaca jadwal dari teks chat (hari, jam, mata kuliah, ruangan, PJ), lalu mengulangnya tiap minggu.
 - **Tugas**: tempel daftar tugas, nama, tanggal, dan jam terbaca otomatis. Tanda ‼️ berarti penting. Singkatan seperti SMA, ML, CV dihubungkan ke mata kuliahnya. Tiap tugas jadi blok 30 menit di Jadwal yang berakhir di deadline.
 - **Ujian**: hitung mundur UTS/UAS per mata kuliah, plus progres materi yang sudah dan belum di-review.
 - **Materi**: dikelompokkan per mata kuliah, lalu per Kuliah dan Praktikum. Tiap file ditandai untuk UTS atau UAS dan punya status review.
@@ -17,7 +17,7 @@ TanStack Start (React) + Supabase (Postgres, Auth, Storage). Tidak lagi bergantu
 Butuh Node.js 22.18 atau lebih baru.
 
 1. Buat project di https://supabase.com (paket Free cukup).
-2. Buat tabelnya: buka **SQL Editor**, jalankan isi tiga file di `supabase/migrations/` **berurutan** (nama file yang lebih kecil dulu). Atau pakai Supabase CLI: `supabase link --project-ref XXXX` lalu `supabase db push`.
+2. Buat tabelnya: buka **SQL Editor**, jalankan isi semua file di `supabase/migrations/` **berurutan** (nama file yang lebih kecil dulu). Atau pakai Supabase CLI: `supabase link --project-ref XXXX` lalu `supabase db push`.
 3. Salin `.env.example` jadi `.env`, isi dari **Project Settings > API** (URL, publishable key, dan service_role key).
 4. Di **Authentication > Providers**, pastikan Email aktif. Di **Authentication > URL Configuration**, isi Site URL `http://localhost:3000` dan tambahkan alamat yang sama di Redirect URLs.
 5. Jalankan:

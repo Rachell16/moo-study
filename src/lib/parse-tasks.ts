@@ -84,10 +84,14 @@ function validDate(y: number, m: number, d: number) {
   return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d ? dt : null;
 }
 
-type Span = { start: number; end: number };
-type DateHit = Span & { date: Date | null };
+export type Span = { start: number; end: number };
+export type DateHit = Span & { date: Date | null };
 
-function findDate(text: string, now: Date): DateHit | null {
+export function findDate(
+  text: string,
+  now: Date,
+  opts: { allowToday?: boolean } = {},
+): DateHit | null {
   // 20/09/2026, 20-09-26, 20.09.2026 (tiga bagian, pemisah sama)
   let m = /(?<![\d/.-])(\d{1,2})([/.-])(\d{1,2})\2(\d{2}|\d{4})(?![\d/])/.exec(text);
   if (m) {
@@ -137,7 +141,8 @@ function findDate(text: string, now: Date): DateHit | null {
   m = /\b(senin|selasa|rabu|kamis|jum'?at|sabtu|minggu|ahad)\b/i.exec(text);
   if (m) {
     const target = WEEKDAYS[m[1]!.toLowerCase().replace("'", "")] ?? WEEKDAYS[m[1]!.toLowerCase()]!;
-    const ahead = (target - now.getDay() + 7) % 7 || 7;
+    const ahead =
+      opts.allowToday && target === now.getDay() ? 0 : (target - now.getDay() + 7) % 7 || 7;
     return {
       start: m.index,
       end: m.index + m[0].length,
@@ -154,9 +159,9 @@ function inferYear(now: Date, month: number, day: number) {
   return now.getFullYear();
 }
 
-type TimeHit = Span & { h: number; min: number };
+export type TimeHit = Span & { h: number; min: number };
 
-function findTime(text: string): TimeHit | null {
+export function findTime(text: string): TimeHit | null {
   // 23:59, 23.59, 9:30 (boleh didahului pukul / pukl / pkl / jam / jm / at)
   let m =
     /(?:\b(?:pu?k?u?l|pkl|jam|jm|at|pada)\b\.?\s*)?(?<![\d/.-])(\d{1,2})[:.](\d{2})(?![\d:])/i.exec(
@@ -182,8 +187,12 @@ function findTime(text: string): TimeHit | null {
   return null;
 }
 
-function tidyTitle(s: string) {
-  return s.replace(/^[\s,;:.\-–—|]+|[\s,;:\-–—|]+$/g, "").replace(/\s{2,}/g, " ");
+export function tidyTitle(input: string) {
+  let s = input.replace(/^[\s,;:.\-–—|]+|[\s,;:\-–—|]+$/g, "").replace(/\s{2,}/g, " ");
+  // kata penghubung yang tertinggal sebelum tanggal atau jam: "rapat hima hari" jadi "rapat hima"
+  const tail = /\s(?:hari|pada|pd|tanggal|tgl|jam|pukul|pkl|di)$/i;
+  while (tail.test(s)) s = s.replace(tail, "");
+  return s;
 }
 
 export function parseTaskLine(rawLine: string, now = new Date()): ParsedTask | null {

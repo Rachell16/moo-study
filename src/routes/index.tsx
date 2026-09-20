@@ -70,11 +70,12 @@ function Index() {
     (x) => x.activity_type === "kuliah" || x.activity_type === "praktikum",
   ).length;
   const study = list.filter((x) => x.activity_type === "belajar").length;
+  const others = list.filter((x) => x.activity_type === "kegiatan").length;
   const summary = !userId
     ? "Masuk untuk melihat agendamu hari ini."
     : list.length === 0
       ? "Belum ada agenda hari ini. Santai dulu, atau jadwalkan satu sesi belajar ringan."
-      : `Hari ini ada ${classes} kelas dan ${study} sesi belajar. Mulai dari yang paling ringan, ya.`;
+      : `Hari ini ada ${classes} kelas dan ${study} sesi belajar${others ? `, plus ${others} kegiatan lain` : ""}. Mulai dari yang paling ringan, ya.`;
 
   // Tugas belum selesai dan ujian yang akan datang, digabung dan diurutkan dari yang paling dekat.
   const upcoming = useMemo(() => {
