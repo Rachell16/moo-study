@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { BUCKET } from "@/lib/materials";
+import { deleteMaterial } from "@/lib/materials";
 import { EXAM_KINDS, type Course, type Material } from "@/lib/schedule-utils";
 
 type Props = {
@@ -74,10 +74,10 @@ function Form({
 
   const remove = async () => {
     setBusy(true);
-    await supabase.storage.from(BUCKET).remove([material.storage_path]);
-    const { error: err } = await supabase.from("materials").delete().eq("id", material.id);
-    if (err) {
-      setError(err.message);
+    try {
+      await deleteMaterial(material);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal menghapus.");
       setBusy(false);
       return;
     }

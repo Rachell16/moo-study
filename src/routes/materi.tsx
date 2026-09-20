@@ -1,5 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, Check, FileText, Pencil, Presentation, Search, UploadCloud } from "lucide-react";
+import {
+  BookOpen,
+  Check,
+  FileText,
+  Pencil,
+  Presentation,
+  Search,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,7 +17,14 @@ import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useCourses, useInvalidateData, useMaterials } from "@/hooks/use-schedules";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { BUCKET, fmtSize, isReviewed, openMaterial, setReviewed } from "@/lib/materials";
+import {
+  BUCKET,
+  deleteMaterial,
+  fmtSize,
+  isReviewed,
+  openMaterial,
+  setReviewed,
+} from "@/lib/materials";
 import { EXAM_KINDS, type Course, type Material } from "@/lib/schedule-utils";
 
 export const Route = createFileRoute("/materi")({
@@ -131,6 +147,16 @@ function MateriPage() {
       await invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal menyimpan.");
+    }
+  };
+
+  const remove = async (m: Material) => {
+    try {
+      await deleteMaterial(m);
+      toast.success("Materi dihapus.");
+      await invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menghapus materi.");
     }
   };
 
@@ -284,6 +310,7 @@ function MateriPage() {
                 onOpen={(m) => void open(m)}
                 onToggle={(m) => void toggleReview(m)}
                 onEdit={setEditing}
+                onDelete={(m) => void remove(m)}
               />
             ))}
           </div>
@@ -318,12 +345,14 @@ function CourseSection({
   onOpen,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   course: Course | null;
   items: Material[];
   onOpen: (m: Material) => void;
   onToggle: (m: Material) => void;
   onEdit: (m: Material) => void;
+  onDelete: (m: Material) => void;
 }) {
   const pending = items.filter((m) => !isReviewed(m)).length;
   return (
@@ -340,11 +369,11 @@ function CourseSection({
           {pending ? `, ${pending} perlu di-review` : items.length ? ", semua sudah di-review" : ""}
         </p>
       </div>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {(["kuliah", "praktikum"] as const).map((kind) => {
           const list = items.filter((m) => m.material_type === kind);
           return (
-            <div key={kind}>
+            <div key={kind} className="min-w-0">
               <h3 className="mb-2 text-sm font-bold">
                 {kind === "kuliah" ? "Kuliah" : "Praktikum"}
               </h3>
@@ -361,6 +390,7 @@ function CourseSection({
                       onOpen={() => onOpen(m)}
                       onToggle={() => onToggle(m)}
                       onEdit={() => onEdit(m)}
+                      onDelete={() => onDelete(m)}
                     />
                   ))}
                 </ul>
@@ -378,22 +408,25 @@ function MaterialRow({
   onOpen,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   m: Material;
   onOpen: () => void;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const reviewed = isReviewed(m);
+  const [confirming, setConfirming] = useState(false);
   const Icon = m.file_type === "pdf" ? FileText : Presentation;
   return (
-    <li className="flex items-center gap-3 rounded-md border border-border bg-background p-2.5">
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border bg-background p-2.5">
       <div
         className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${m.file_type === "pdf" ? "bg-study-sage" : "bg-study-pink"}`}
       >
         <Icon className="h-5 w-5" />
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-40">
         <button
           type="button"
           onClick={onOpen}
@@ -406,25 +439,51 @@ function MaterialRow({
           {m.exam_scope.toUpperCase()}, {fmtSize(m.size_bytes)}
         </p>
       </div>
-      <Button
-        variant={reviewed ? "secondary" : "outline"}
-        size="sm"
-        onClick={onToggle}
-        aria-pressed={reviewed}
-        title={reviewed ? "Klik untuk kembali ke perlu review" : "Klik kalau sudah di-review"}
-      >
-        {reviewed ? <Check /> : <span className="h-2 w-2 rounded-full bg-destructive" />}
-        {reviewed ? "Sudah" : "Perlu review"}
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={onEdit}
-        aria-label={`Ubah ${m.name}`}
-      >
-        <Pencil />
-      </Button>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        {confirming ? (
+          <>
+            <span className="text-xs font-semibold text-destructive">Hapus file ini?</span>
+            <Button variant="destructive" size="sm" onClick={onDelete}>
+              Hapus
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+              Batal
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant={reviewed ? "secondary" : "outline"}
+              size="sm"
+              onClick={onToggle}
+              aria-pressed={reviewed}
+              title={reviewed ? "Klik untuk kembali ke perlu review" : "Klik kalau sudah di-review"}
+            >
+              {reviewed ? <Check /> : <span className="h-2 w-2 rounded-full bg-destructive" />}
+              {reviewed ? "Sudah" : "Perlu review"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onEdit}
+              aria-label={`Ubah ${m.name}`}
+            >
+              <Pencil />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={() => setConfirming(true)}
+              aria-label={`Hapus ${m.name}`}
+              title="Hapus"
+            >
+              <Trash2 />
+            </Button>
+          </>
+        )}
+      </div>
     </li>
   );
 }

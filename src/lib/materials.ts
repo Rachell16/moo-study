@@ -31,3 +31,10 @@ export const fmtSize = (bytes: number) =>
   bytes >= 1024 * 1024
     ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
     : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+// Hapus baris dulu, lalu file-nya. Kalau file gagal terhapus, yang tersisa cuma file yatim yang tidak terlihat.
+export async function deleteMaterial(m: Pick<Material, "id" | "storage_path">) {
+  const { error } = await supabase.from("materials").delete().eq("id", m.id);
+  if (error) throw new Error(error.message);
+  await supabase.storage.from(BUCKET).remove([m.storage_path]);
+}

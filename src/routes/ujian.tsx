@@ -147,7 +147,7 @@ function UjianPage() {
 
           <div className="grid gap-5 xl:grid-cols-2">
             {ordered.map((course) => (
-              <PaperCard key={course.id}>
+              <PaperCard key={course.id} className="min-w-0">
                 <div className="mb-4">
                   <p className="section-kicker">{course.code}</p>
                   <h2 className="font-display text-xl font-bold">{course.name}</h2>
