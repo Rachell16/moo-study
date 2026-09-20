@@ -36,15 +36,23 @@ export function useGoogleCalendar(userId: string | null, options: { auto?: boole
       setSyncing(true);
       const total = { pushed: 0, pulled: 0, removed: 0, errors: [] as string[] };
       try {
-        // Kirim bertahap: server memproses maksimal 30 agenda per panggilan.
-        for (let i = 0; i < 60; i++) {
+        // Kirim bertahap: server memproses maksimal 15 agenda per panggilan.
+        // Kalau Google membatasi kecepatan, tunggu sebentar lalu lanjut.
+        for (let i = 0; i < 120; i++) {
           const r = await syncFn();
           total.pushed += r.pushed;
           total.pulled += r.pulled;
           total.removed += r.removed;
           total.errors.push(...r.errors);
-          if (r.remaining <= 0) break;
-          setProgress(`Mengirim ke Google… ${total.pushed} terkirim, ${r.remaining} lagi`);
+          if (r.remaining <= 0 && !r.throttled) break;
+          if (r.throttled) {
+            setProgress(
+              `Google minta pelan-pelan, menunggu sebentar… ${total.pushed} terkirim, ${r.remaining} lagi`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 8000));
+          } else {
+            setProgress(`Mengirim ke Google… ${total.pushed} terkirim, ${r.remaining} lagi`);
+          }
         }
         if (total.errors.length) toast.error(`Sebagian gagal dikirim: ${total.errors[0]}`);
         else if (!silent)

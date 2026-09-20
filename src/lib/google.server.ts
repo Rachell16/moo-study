@@ -9,8 +9,15 @@ const SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid", "em
 const CAL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const ACTIVITY_TYPES = ["kuliah", "belajar", "praktikum", "tugas", "ujian"];
 const DEADLINE_PREFIX = "Deadline: ";
-const PUSH_BATCH = 30; // jumlah agenda yang dikirim per panggilan sinkron
-const PUSH_CONCURRENCY = 5;
+const PUSH_BATCH = 15; // jumlah agenda yang dikirim per panggilan sinkron
+const MAX_RETRIES = 2; // ulangi permintaan yang kena batas kecepatan Google
+
+// Google Calendar membatasi kecepatan tulis per pengguna, jadi pengiriman dibuat pelan dan berurutan.
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const delays = () => ({
+  between: Number(process.env["SYNC_DELAY_MS"] ?? 250),
+  retry: Number(process.env["SYNC_RETRY_MS"] ?? 1000),
+});
 
 // Env dibaca per permintaan (bukan di level modul) supaya jalan di runtime edge.
 function config() {
@@ -192,28 +199,47 @@ class GoogleHttpError extends Error {
   constructor(
     public status: number,
     message: string,
+    public rateLimited = false,
   ) {
     super(message);
   }
 }
 
+type GoogleErrorBody = { error?: { message?: string; errors?: { reason?: string }[] } };
+
+function isRateLimit(status: number, body: GoogleErrorBody) {
+  if (status === 429) return true;
+  if (status !== 403) return false;
+  const msg = body.error?.message ?? "";
+  const reasons = (body.error?.errors ?? []).map((e) => e.reason ?? "");
+  return /rate limit|quota/i.test(msg) || reasons.some((r) => /ratelimitexceeded/i.test(r));
+}
+
 async function gcal(token: string, path: string, init: RequestInit = {}): Promise<unknown> {
-  const res = await fetch(`${CAL}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
-  });
-  if (res.status === 204) return null;
-  const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-  if (!res.ok)
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${CAL}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
+      },
+    });
+    if (res.status === 204) return null;
+    const json = (await res.json().catch(() => ({}))) as GoogleErrorBody;
+    if (res.ok) return json;
+
+    const rate = isRateLimit(res.status, json);
+    if ((rate || res.status >= 500) && attempt < MAX_RETRIES) {
+      await sleep(delays().retry * 2 ** attempt + Math.random() * 200); // tunggu makin lama tiap ulangan
+      continue;
+    }
     throw new GoogleHttpError(
       res.status,
       json.error?.message || `Google Calendar error ${res.status}`,
+      rate,
     );
-  return json;
+  }
 }
 
 const gone = (e: unknown) => e instanceof GoogleHttpError && (e.status === 404 || e.status === 410);
@@ -283,13 +309,21 @@ export type SyncResult = {
   pulled: number;
   removed: number;
   remaining: number;
+  throttled: boolean;
   errors: string[];
 };
 
 export async function syncForUser(db: Db, userId: string): Promise<SyncResult> {
   const { timeZone } = requireConfig();
   const token = await getAccessToken(userId);
-  const result: SyncResult = { pushed: 0, pulled: 0, removed: 0, remaining: 0, errors: [] };
+  const result: SyncResult = {
+    pushed: 0,
+    pulled: 0,
+    removed: 0,
+    remaining: 0,
+    throttled: false,
+    errors: [],
+  };
 
   // 1) kirim perubahan lokal ke Google, PUSH_BATCH sekaligus (impor jadwal satu semester bisa ratusan agenda)
   const pendingFilter = () =>
@@ -304,6 +338,7 @@ export async function syncForUser(db: Db, userId: string): Promise<SyncResult> {
     .limit(PUSH_BATCH);
   if (pendingErr) throw new Error(pendingErr.message);
 
+  let failed = 0;
   const pushOne = async (s: ScheduleRow) => {
     try {
       let saved: GEvent;
@@ -327,19 +362,27 @@ export async function syncForUser(db: Db, userId: string): Promise<SyncResult> {
         .eq("id", s.id);
       result.pushed++;
     } catch (e) {
+      if (e instanceof GoogleHttpError && e.rateLimited) {
+        result.throttled = true; // bukan kesalahan agenda: biarkan "lokal", coba lagi setelah jeda
+        return;
+      }
+      failed++;
       await db.from("schedules").update({ sync_status: "gagal" }).eq("id", s.id);
       result.errors.push(`${s.title}: ${e instanceof Error ? e.message : "gagal"}`);
     }
   };
 
   const rows = pending ?? [];
-  for (let i = 0; i < rows.length; i += PUSH_CONCURRENCY) {
-    await Promise.all(rows.slice(i, i + PUSH_CONCURRENCY).map(pushOne));
+  for (const row of rows) {
+    if (result.throttled) break; // Google minta pelan-pelan, hentikan batch ini
+    await pushOne(row);
+    if (delays().between) await sleep(delays().between);
   }
 
   // Masih ada antrean: berhenti di sini, pemanggil memanggil lagi sampai `remaining` 0.
-  // Kalau satu batch gagal semua (pushed = 0), lanjut ke tarik supaya tidak berputar selamanya.
-  result.remaining = Math.max((count ?? rows.length) - rows.length, 0);
+  // Kalau batch ini tidak menghasilkan apa-apa (semua gagal), lanjut ke tarik supaya tidak berputar selamanya.
+  result.remaining = Math.max((count ?? rows.length) - result.pushed - failed, 0);
+  if (result.throttled) return result;
   if (result.remaining > 0 && result.pushed > 0) return result;
   result.remaining = 0;
 
