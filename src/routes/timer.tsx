@@ -1,8 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import { Flame, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { CowMark } from "@/components/cow-mark";
@@ -10,27 +8,26 @@ import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useFocusSessions } from "@/hooks/use-focus-sessions";
 import { useCourses } from "@/hooks/use-schedules";
 import { useSession } from "@/hooks/use-session";
-import { supabase } from "@/integrations/supabase/client";
+import { useTimer } from "@/hooks/use-timer";
+import { CompanionSettings } from "@/components/companion-settings";
+import { PHASE_LABEL } from "@/lib/timer-core";
 import { computeStreak, dayKey, weekMarks } from "@/lib/streak";
 import { startOfWeek } from "@/lib/schedule-utils";
-import {
-  DEFAULTS,
-  LIMITS,
-  PRESETS,
-  loadSettings,
-  presetIdOf,
-  sanitize,
-  saveSettings,
-  type TimerSettings,
-} from "@/lib/timer-settings";
+import { LIMITS, PRESETS, presetIdOf } from "@/lib/timer-settings";
 
 export const Route = createFileRoute("/timer")({
   head: () => ({
     meta: [
       { title: "Timer Belajar — Moo Study" },
-      { name: "description", content: "Pomodoro yang tenang untuk sesi belajar fokus." },
+      {
+        name: "description",
+        content: "Podomoro yang tenang untuk sesi belajar fokus.",
+      },
       { property: "og:title", content: "Timer Belajar — Moo Study" },
-      { property: "og:description", content: "Pomodoro yang tenang untuk sesi belajar fokus." },
+      {
+        property: "og:description",
+        content: "Podomoro yang tenang untuk sesi belajar fokus.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -38,178 +35,60 @@ export const Route = createFileRoute("/timer")({
   component: TimerPage,
 });
 
-type Phase = "focus" | "short" | "long";
-const LABEL: Record<Phase, string> = {
-  focus: "Fokus",
-  short: "Istirahat",
-  long: "Istirahat panjang",
-};
-const minutesOf = (p: Phase, s: TimerSettings) =>
-  p === "focus" ? s.focus : p === "short" ? s.short : s.long;
 const DAY_LETTERS = ["S", "S", "R", "K", "J", "S", "M"];
-
-// Bunyi tiga nada pendek saat sesi selesai.
-function beep() {
-  try {
-    const AC =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    const ctx = new AC();
-    [0, 0.25, 0.5].forEach((t, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = i === 2 ? 880 : 660;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + t);
-      gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.2);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + 0.22);
-    });
-  } catch {
-    /* browser memblokir suara: abaikan */
-  }
-}
 
 function TimerPage() {
   const { loading, userId } = useSession();
-  const qc = useQueryClient();
   const courses = useCourses(userId);
   const sessions = useFocusSessions(userId);
-
-  // pengaturan dibaca setelah tampil di browser supaya sama dengan hasil render server
-  const [settings, setSettings] = useState<TimerSettings>(DEFAULTS);
-  useEffect(() => setSettings(loadSettings()), []);
-  const update = (patch: Partial<TimerSettings>) => {
-    const next = sanitize({ ...settings, ...patch });
-    setSettings(next);
-    saveSettings(next);
-  };
-
-  const [phase, setPhase] = useState<Phase>("focus");
-  const [running, setRunning] = useState(false);
-  const [remaining, setRemaining] = useState(DEFAULTS.focus * 60000); // milidetik
-  const [cycle, setCycle] = useState(0); // sesi fokus yang sudah selesai di putaran ini
-  const [courseId, setCourseId] = useState("");
-  const endAt = useRef(0);
-  const startedAt = useRef<Date | null>(null);
-  const finishing = useRef(false);
-
-  const total = minutesOf(phase, settings) * 60000;
-
-  // Saat pengaturan diubah dan timer tidak jalan, tampilan ikut durasi baru.
-  useEffect(() => {
-    if (!running) setRemaining(minutesOf(phase, settings) * 60000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.focus, settings.short, settings.long, phase]);
-
-  const go = useCallback(
-    (next: Phase, start: boolean) => {
-      finishing.current = false;
-      const ms = minutesOf(next, settings) * 60000;
-      setPhase(next);
-      setRemaining(ms);
-      startedAt.current = null;
-      if (start) {
-        endAt.current = Date.now() + ms;
-        if (next === "focus") startedAt.current = new Date();
-        setRunning(true);
-      } else setRunning(false);
-    },
-    [settings],
-  );
-
-  const finish = useCallback(async () => {
-    if (finishing.current) return;
-    finishing.current = true;
-    setRunning(false);
-    if (settings.sound) beep();
-
-    if (phase !== "focus") {
-      toast("Istirahat selesai, lanjut fokus!");
-      go("focus", settings.auto);
-      return;
-    }
-
-    const doneCycle = cycle + 1;
-    const longBreak = doneCycle >= settings.cycle;
-    setCycle(longBreak ? 0 : doneCycle);
-    toast.success(
-      longBreak
-        ? `Sesi selesai! Waktunya istirahat panjang ${settings.long} menit.`
-        : `Sesi selesai! Istirahat ${settings.short} menit.`,
-    );
-    const started = startedAt.current ?? new Date(Date.now() - settings.focus * 60000);
-    go(longBreak ? "long" : "short", settings.auto);
-
-    if (userId) {
-      const { error } = await supabase.from("focus_sessions").insert({
-        user_id: userId,
-        course_id: courseId || null,
-        focus_minutes: settings.focus,
-        break_minutes: settings.short,
-        completed: true,
-        started_at: started.toISOString(),
-        completed_at: new Date().toISOString(),
-      });
-      if (error) toast.error(`Sesi belum tercatat di streak: ${error.message}`);
-      else await qc.invalidateQueries({ queryKey: ["focus-sessions"] });
-    }
-  }, [phase, cycle, settings, userId, courseId, go, qc]);
-
-  // Sisa waktu dihitung dari jam dinding (bukan hitung mundur per detik), jadi tetap akurat saat tab di latar belakang.
-  useEffect(() => {
-    if (!running) return;
-    const id = window.setInterval(() => {
-      const left = endAt.current - Date.now();
-      if (left <= 0) void finish();
-      else setRemaining(left);
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [running, finish]);
-
-  const seconds = Math.max(Math.ceil(remaining / 1000), 0);
-  const clock = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-  useEffect(() => {
-    document.title = running ? `${clock} ${LABEL[phase]} — Moo Study` : "Timer Belajar — Moo Study";
-  }, [running, clock, phase]);
-
-  const toggle = () => {
-    if (running) {
-      setRemaining(Math.max(endAt.current - Date.now(), 0));
-      setRunning(false);
-    } else {
-      endAt.current = Date.now() + remaining;
-      if (phase === "focus" && !startedAt.current) startedAt.current = new Date();
-      setRunning(true);
-    }
-  };
-  const reset = () => {
-    setRunning(false);
-    setRemaining(total);
-    startedAt.current = null;
-  };
+  // Timer hidup di provider global, jadi tetap jalan saat pindah halaman.
+  const {
+    settings,
+    update,
+    phase,
+    remaining,
+    total,
+    cycle,
+    courseId,
+    setCourseId,
+    clock,
+    progress,
+    toggle,
+    reset,
+    go,
+    running,
+  } = useTimer();
 
   // ---- streak dan ringkasan hari ini (dihitung di browser, setelah tampil) ----
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
   const dates = useMemo(
-    () => (sessions.data ?? []).map((s) => new Date(s.completed_at ?? s.started_at)),
+    () =>
+      (sessions.data ?? []).map(
+        (s) => new Date(s.completed_at ?? s.started_at),
+      ),
     [sessions.data],
   );
-  const streak = useMemo(() => computeStreak(dates, now ?? new Date()), [dates, now]);
-  const marks = useMemo(() => weekMarks(dates, startOfWeek(now ?? new Date())), [dates, now]);
+  const streak = useMemo(
+    () => computeStreak(dates, now ?? new Date()),
+    [dates, now],
+  );
+  const marks = useMemo(
+    () => weekMarks(dates, startOfWeek(now ?? new Date())),
+    [dates, now],
+  );
   const todayIndex = now ? (now.getDay() + 6) % 7 : -1;
   const today = useMemo(() => {
     const key = dayKey(now ?? new Date());
     const list = (sessions.data ?? []).filter(
       (s) => dayKey(new Date(s.completed_at ?? s.started_at)) === key,
     );
-    return { count: list.length, minutes: list.reduce((sum, s) => sum + s.focus_minutes, 0) };
+    return {
+      count: list.length,
+      minutes: list.reduce((sum, s) => sum + s.focus_minutes, 0),
+    };
   }, [sessions.data, now]);
 
-  const progress = 1 - remaining / total;
   const courseList = useMemo(() => courses.data ?? [], [courses.data]);
 
   return (
@@ -232,7 +111,7 @@ function TimerPage() {
                   size="sm"
                   onClick={() => go(p, false)}
                 >
-                  {LABEL[p]}
+                  {PHASE_LABEL[p]}
                 </Button>
               ))}
             </div>
@@ -243,11 +122,13 @@ function TimerPage() {
                 background: `conic-gradient(var(--primary) ${progress * 360}deg, var(--muted) 0deg)`,
               }}
               role="timer"
-              aria-label={`${LABEL[phase]}, sisa ${clock}`}
+              aria-label={`${PHASE_LABEL[phase]}, sisa ${clock}`}
             >
               <div>
                 <span>{clock}</span>
-                <small>{phase === "focus" ? "tetap fokus, ya" : "tarik napas dulu"}</small>
+                <small>
+                  {phase === "focus" ? "tetap fokus, ya" : "tarik napas dulu"}
+                </small>
               </div>
             </div>
 
@@ -283,8 +164,9 @@ function TimerPage() {
                 />
               ))}
               <span className="ml-2 text-xs text-muted-foreground">
-                sesi {Math.min(cycle + (phase === "focus" ? 1 : 0), settings.cycle)} dari{" "}
-                {settings.cycle} sebelum istirahat panjang
+                sesi{" "}
+                {Math.min(cycle + (phase === "focus" ? 1 : 0), settings.cycle)}{" "}
+                dari {settings.cycle} sebelum istirahat panjang
               </span>
             </div>
 
@@ -307,15 +189,28 @@ function TimerPage() {
 
           <PaperCard>
             <p className="section-kicker">Pengaturan</p>
-            <h2 className="font-display text-2xl font-bold">Atur ritme belajarmu</h2>
-            <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Preset">
+            <h2 className="font-display text-2xl font-bold">
+              Atur ritme belajarmu
+            </h2>
+            <div
+              className="mt-4 flex flex-wrap gap-2"
+              role="group"
+              aria-label="Preset"
+            >
               {PRESETS.map((p) => (
                 <Button
                   key={p.id}
                   size="sm"
-                  variant={presetIdOf(settings) === p.id ? "default" : "outline"}
+                  variant={
+                    presetIdOf(settings) === p.id ? "default" : "outline"
+                  }
                   onClick={() =>
-                    update({ focus: p.focus, short: p.short, long: p.long, cycle: p.cycle })
+                    update({
+                      focus: p.focus,
+                      short: p.short,
+                      long: p.long,
+                      cycle: p.cycle,
+                    })
                   }
                 >
                   {p.label}
@@ -328,8 +223,9 @@ function TimerPage() {
               </span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Pilih preset, atau ubah angka di bawah untuk membuat ritme sendiri. Perubahan berlaku
-              di sesi berikutnya kalau timer sedang jalan.
+              Pilih preset, atau ubah angka di bawah untuk membuat ritme
+              sendiri. Perubahan berlaku di sesi berikutnya kalau timer sedang
+              jalan.
             </p>
 
             <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -394,6 +290,7 @@ function TimerPage() {
               </label>
             </div>
           </PaperCard>
+          <CompanionSettings />
         </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-5">
@@ -403,8 +300,12 @@ function TimerPage() {
                 <Flame />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase text-muted-foreground">Study streak</p>
-                <p className="font-display text-3xl font-bold">{streak.current} hari</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">
+                  Study streak
+                </p>
+                <p className="font-display text-3xl font-bold">
+                  {streak.current} hari
+                </p>
               </div>
             </div>
             <div className="mt-5 flex justify-between">
@@ -416,14 +317,19 @@ function TimerPage() {
                   >
                     ✓
                   </span>
-                  <small className="mt-1 block text-muted-foreground">{DAY_LETTERS[i]}</small>
+                  <small className="mt-1 block text-muted-foreground">
+                    {DAY_LETTERS[i]}
+                  </small>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
               {loading ? null : !userId ? (
                 <>
-                  <Link to="/auth" className="font-semibold text-primary underline">
+                  <Link
+                    to="/auth"
+                    className="font-semibold text-primary underline"
+                  >
                     Masuk
                   </Link>{" "}
                   supaya sesi fokusmu tercatat.
@@ -442,7 +348,9 @@ function TimerPage() {
             <h2 className="font-display text-xl font-bold">Sesi hari ini</h2>
             <p className="mt-4 text-4xl font-bold">
               {today.minutes}{" "}
-              <span className="text-base font-medium text-muted-foreground">menit</span>
+              <span className="text-base font-medium text-muted-foreground">
+                menit
+              </span>
             </p>
             <div
               className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
@@ -454,7 +362,9 @@ function TimerPage() {
             >
               <div
                 className="h-full bg-accent"
-                style={{ width: `${Math.min(today.count / settings.goal, 1) * 100}%` }}
+                style={{
+                  width: `${Math.min(today.count / settings.goal, 1) * 100}%`,
+                }}
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -495,7 +405,12 @@ function NumberField({
         onChange={(e) => {
           setText(e.target.value);
           const n = Number(e.target.value);
-          if (e.target.value !== "" && Number.isInteger(n) && n >= range[0] && n <= range[1])
+          if (
+            e.target.value !== "" &&
+            Number.isInteger(n) &&
+            n >= range[0] &&
+            n <= range[1]
+          )
             onCommit(n);
         }}
         onBlur={() => setText(String(value))}

@@ -7,10 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import { CompanionDock } from "@/components/companion-dock";
+import { CompanionProvider } from "@/hooks/use-companion";
+import { TimerProvider } from "@/hooks/use-timer";
 
 function NotFoundComponent() {
   return (
@@ -73,7 +76,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#4b5320" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Moo Study" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { title: "Moo Study" },
       { name: "description", content: "Ruang belajar pribadi untuk jadwal, materi, dan fokus." },
       { name: "author", content: "Moo Study" },
@@ -94,6 +102,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico?v=2", sizes: "any" },
       { rel: "icon", href: "/icon.png?v=2", type: "image/png", sizes: "192x192" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=2" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -119,10 +128,21 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // Service worker: aplikasi bisa dipasang, halaman offline, dan notifikasi.
+  useEffect(() => {
+    if ("serviceWorker" in navigator)
+      void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <TimerProvider>
+        <CompanionProvider>
+          <Outlet />
+          <CompanionDock />
+        </CompanionProvider>
+      </TimerProvider>
       <Toaster />
     </QueryClientProvider>
   );

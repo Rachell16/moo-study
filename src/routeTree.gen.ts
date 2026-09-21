@@ -16,6 +16,7 @@ import { Route as MateriRouteImport } from './routes/materi'
 import { Route as TimerRouteImport } from './routes/timer'
 import { Route as TugasRouteImport } from './routes/tugas'
 import { Route as UjianRouteImport } from './routes/ujian'
+import { Route as WidgetRouteImport } from './routes/widget'
 import { Route as BelajarIndexRouteImport } from './routes/belajar.index'
 import { Route as BelajarIdRouteImport } from './routes/belajar.$id'
 import { Route as ApiGoogleCallbackRouteImport } from './routes/api/google/callback'
@@ -55,6 +56,11 @@ const UjianRoute = UjianRouteImport.update({
   path: '/ujian',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WidgetRoute = WidgetRouteImport.update({
+  id: '/widget',
+  path: '/widget',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BelajarIndexRoute = BelajarIndexRouteImport.update({
   id: '/belajar/',
   path: '/belajar/',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/timer': typeof TimerRoute
   '/tugas': typeof TugasRoute
   '/ujian': typeof UjianRoute
+  '/widget': typeof WidgetRoute
   '/belajar/$id': typeof BelajarIdRoute
   '/belajar/': typeof BelajarIndexRoute
   '/api/google/callback': typeof ApiGoogleCallbackRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/timer': typeof TimerRoute
   '/tugas': typeof TugasRoute
   '/ujian': typeof UjianRoute
+  '/widget': typeof WidgetRoute
   '/belajar/$id': typeof BelajarIdRoute
   '/belajar': typeof BelajarIndexRoute
   '/api/google/callback': typeof ApiGoogleCallbackRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/timer': typeof TimerRoute
   '/tugas': typeof TugasRoute
   '/ujian': typeof UjianRoute
+  '/widget': typeof WidgetRoute
   '/belajar/$id': typeof BelajarIdRoute
   '/belajar/': typeof BelajarIndexRoute
   '/api/google/callback': typeof ApiGoogleCallbackRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/timer'
     | '/tugas'
     | '/ujian'
+    | '/widget'
     | '/belajar/$id'
     | '/belajar/'
     | '/api/google/callback'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/timer'
     | '/tugas'
     | '/ujian'
+    | '/widget'
     | '/belajar/$id'
     | '/belajar'
     | '/api/google/callback'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/timer'
     | '/tugas'
     | '/ujian'
+    | '/widget'
     | '/belajar/$id'
     | '/belajar/'
     | '/api/google/callback'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   TimerRoute: typeof TimerRoute
   TugasRoute: typeof TugasRoute
   UjianRoute: typeof UjianRoute
+  WidgetRoute: typeof WidgetRoute
   BelajarIdRoute: typeof BelajarIdRoute
   BelajarIndexRoute: typeof BelajarIndexRoute
   ApiGoogleCallbackRoute: typeof ApiGoogleCallbackRoute
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UjianRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/widget': {
+      id: '/widget'
+      path: '/widget'
+      fullPath: '/widget'
+      preLoaderRoute: typeof WidgetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/belajar/': {
       id: '/belajar/'
       path: '/belajar'
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   TimerRoute: TimerRoute,
   TugasRoute: TugasRoute,
   UjianRoute: UjianRoute,
+  WidgetRoute: WidgetRoute,
   BelajarIdRoute: BelajarIdRoute,
   BelajarIndexRoute: BelajarIndexRoute,
   ApiGoogleCallbackRoute: ApiGoogleCallbackRoute,

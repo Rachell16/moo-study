@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { cleanCowName } from "@/lib/companion";
 import { displayNameOf } from "@/lib/display-name";
 
-type SessionState = { loading: boolean; userId: string | null; name: string; email: string };
+type SessionState = {
+  loading: boolean;
+  userId: string | null;
+  name: string;
+  email: string;
+  cowName: string;
+};
 
 const from = (session: Session | null): SessionState => ({
   loading: false,
   userId: session?.user.id ?? null,
   name: displayNameOf(session?.user),
   email: session?.user.email ?? "",
+  cowName: cleanCowName(session?.user.user_metadata?.["cow_name"]),
 });
 
 // Sesi login dibaca di browser saja; sebelum siap, `loading` bernilai true.
@@ -19,6 +27,7 @@ export function useSession() {
     userId: null,
     name: "",
     email: "",
+    cowName: "Moo",
   });
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setState(from(data.session)));
