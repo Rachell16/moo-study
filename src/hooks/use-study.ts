@@ -8,6 +8,8 @@ import {
   useSchedulesBetween,
   useTasks,
 } from "@/hooks/use-schedules";
+import { useServerFn } from "@tanstack/react-start";
+import { getAiStatus } from "@/lib/study.functions";
 import { buildPlan } from "@/lib/study-plan";
 import { addDays, startOfDay, ymd } from "@/lib/schedule-utils";
 import type { Database } from "@/integrations/supabase/types";
@@ -100,3 +102,20 @@ export function usePlan(userId: string | null) {
 
   return { plan, loading: !!userId && !plan, now, courses: courses.data ?? EMPTY };
 }
+
+// Status AI: kunci terpasang atau belum, dan sisa jatah hari ini.
+export function useAiStatus(userId: string | null) {
+  const statusFn = useServerFn(getAiStatus);
+  return useQuery({
+    queryKey: ["ai-status", userId],
+    enabled: !!userId,
+    queryFn: () => statusFn(),
+    staleTime: 30 * 1000,
+  });
+}
+
+export type AiInfo = NonNullable<ReturnType<typeof useAiStatus>["data"]>;
+
+// Kunci terpasang dan masih ada jatah? (Tanpa data jatah, dianggap boleh: server yang memutuskan.)
+export const canUseAi = (ai: AiInfo | undefined) =>
+  !!ai?.configured && (ai.quota ? ai.quota.remaining > 0 : true);

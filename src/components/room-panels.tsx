@@ -1,21 +1,22 @@
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, RotateCcw, Sparkles } from "lucide-react";
+import { Check, RotateCcw, Shuffle, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useInvalidateData } from "@/hooks/use-schedules";
-import type { MaterialPoint } from "@/hooks/use-study";
+import { canUseAi, type AiInfo, type MaterialPoint } from "@/hooks/use-study";
 import { supabase } from "@/integrations/supabase/client";
 import { setReviewed } from "@/lib/materials";
-import type { Material } from "@/lib/schedule-utils";
-import { generateOutline, generateQuiz } from "@/lib/study.functions";
-import { readStoredQuiz } from "@/lib/study-ai";
+import { fmtTime, type Material } from "@/lib/schedule-utils";
+import { generateQuiz, prepareMaterial } from "@/lib/study.functions";
+import { readStoredQuiz, type QuizQuestion } from "@/lib/study-ai";
 
 const PRIVACY =
   "Isi materi dikirim ke Google Gemini (paket gratis). Google boleh memakai isinya untuk meningkatkan produknya, jadi jangan dipakai untuk materi rahasia.";
 
+// ------------------------------------------------------------ status AI dan jatah
 function AiNotReady() {
   return (
     <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
@@ -29,32 +30,49 @@ function AiNotReady() {
   );
 }
 
-// ---------------------------------------------------------------- poin materi
+export function AiQuotaLine({ ai }: { ai: AiInfo | undefined }) {
+  if (!ai?.configured || !ai.quota) return null;
+  const q = ai.quota;
+  const reset = fmtTime(new Date(q.resetsAt));
+  return (
+    <p
+      className={`text-xs ${q.remaining === 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+    >
+      {q.remaining === 0
+        ? `Jatah AI-mu hari ini habis. Terisi lagi sekitar pukul ${reset}.`
+        : `Sisa jatah AI hari ini: ${q.remaining} dari ${q.limit}. Terisi lagi sekitar pukul ${reset}.`}
+    </p>
+  );
+}
+
+// ------------------------------------------------------------ poin materi
 export function PointsPanel({
   material,
   points,
-  aiReady,
+  ai,
   onPage,
 }: {
   material: Material;
   points: MaterialPoint[];
-  aiReady: boolean;
+  ai: AiInfo | undefined;
   onPage: (page: number) => void;
 }) {
   const qc = useQueryClient();
   const invalidate = useInvalidateData();
-  const generate = useServerFn(generateOutline);
+  const prepare = useServerFn(prepareMaterial);
   const [busy, setBusy] = useState(false);
   const [confirmRedo, setConfirmRedo] = useState(false);
 
   const done = points.filter((p) => p.understood).length;
   const allDone = points.length > 0 && done === points.length;
   const canAi = material.file_type === "pdf";
+  const ready = canUseAi(ai);
 
   const refresh = () =>
     Promise.all([
       qc.invalidateQueries({ queryKey: ["points"] }),
       qc.invalidateQueries({ queryKey: ["point-progress"] }),
+      qc.invalidateQueries({ queryKey: ["ai-status"] }),
       invalidate(),
     ]);
 
@@ -62,11 +80,12 @@ export function PointsPanel({
     setBusy(true);
     setConfirmRedo(false);
     try {
-      const r = await generate({ data: { materialId: material.id, force } });
-      toast.success(`${r.count} poin materi siap dipelajari.`);
+      const r = await prepare({ data: { materialId: material.id, force } });
+      toast.success(`${r.points} poin dan ${r.questions} soal latihan siap.`);
       await refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal membuat poin.");
+      toast.error(e instanceof Error ? e.message : "Gagal menyiapkan materi.");
+      await qc.invalidateQueries({ queryKey: ["ai-status"] });
     } finally {
       setBusy(false);
     }
@@ -95,25 +114,27 @@ export function PointsPanel({
     return (
       <div className="grid gap-3">
         <p className="text-sm text-muted-foreground">
-          Belum ada poin. AI akan membaca PDF-nya lalu memecahnya jadi 6 sampai 15 poin berurutan,
-          masing-masing dengan penjelasan singkat dan nomor halaman.
+          AI akan membaca PDF-nya lalu memecahnya jadi 6 sampai 15 poin berurutan (dengan penjelasan
+          singkat dan nomor halaman), sekaligus membuat 15 sampai 30 soal latihan. Semuanya dalam
+          satu kali proses.
         </p>
         {!canAi ? (
           <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
             AI hanya bisa membaca PDF. Ubah slide PPT jadi PDF dulu, lalu unggah lagi di Materi.
           </p>
-        ) : !aiReady ? (
+        ) : !ai?.configured ? (
           <AiNotReady />
         ) : (
           <>
-            <Button className="w-fit" disabled={busy} onClick={() => void run(false)}>
-              <Sparkles /> {busy ? "Membaca materi…" : "Buat poin dengan AI"}
+            <Button className="w-fit" disabled={busy || !ready} onClick={() => void run(false)}>
+              <Sparkles /> {busy ? "Membaca materi…" : "Siapkan materi dengan AI"}
             </Button>
             {busy && (
               <p className="text-sm text-muted-foreground">
-                Biasanya 10 sampai 40 detik. Jangan tutup halaman ini.
+                Biasanya 20 sampai 60 detik. Jangan tutup halaman ini.
               </p>
             )}
+            <AiQuotaLine ai={ai} />
             <p className="text-xs text-muted-foreground">{PRIVACY}</p>
           </>
         )}
@@ -194,104 +215,184 @@ export function PointsPanel({
         ))}
       </ol>
 
-      {canAi && aiReady && (
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          {confirmRedo ? (
-            <>
-              <span className="font-semibold text-destructive">
-                Poin lama dan tanda pahammu akan hilang.
-              </span>
+      {canAi && ai?.configured && (
+        <div className="grid gap-2">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {confirmRedo ? (
+              <>
+                <span className="font-semibold text-destructive">
+                  Poin lama dan tanda pahammu akan hilang.
+                </span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={busy || !ready}
+                  onClick={() => void run(true)}
+                >
+                  {busy ? "Membaca…" : "Buat ulang"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmRedo(false)}>
+                  Batal
+                </Button>
+              </>
+            ) : (
               <Button
                 size="sm"
-                variant="destructive"
-                disabled={busy}
-                onClick={() => void run(true)}
+                variant="ghost"
+                disabled={!ready}
+                onClick={() => setConfirmRedo(true)}
               >
-                {busy ? "Membaca…" : "Buat ulang"}
+                <RotateCcw /> Buat ulang poin dan soal
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirmRedo(false)}>
-                Batal
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" variant="ghost" onClick={() => setConfirmRedo(true)}>
-              <RotateCcw /> Buat ulang poin
-            </Button>
-          )}
+            )}
+          </div>
+          <AiQuotaLine ai={ai} />
         </div>
       )}
     </div>
   );
 }
 
-// ---------------------------------------------------------------- soal latihan
-export function QuizPanel({ material, aiReady }: { material: Material; aiReady: boolean }) {
+// ------------------------------------------------------------ latihan soal
+type Item = { q: QuizQuestion; order: number[]; source: number }; // order: urutan tampil opsi (diacak)
+
+const shuffle = <T,>(list: T[]) => {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j]!, a[i]!];
+  }
+  return a;
+};
+
+const makeItems = (all: QuizQuestion[], indexes: number[]): Item[] =>
+  shuffle(indexes).map((source) => ({
+    q: all[source]!,
+    source,
+    order: shuffle(all[source]!.options.map((_, i) => i)),
+  }));
+
+export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | undefined }) {
+  const qc = useQueryClient();
   const invalidate = useInvalidateData();
   const generate = useServerFn(generateQuiz);
   const questions = useMemo(() => readStoredQuiz(material.quiz), [material.quiz]);
   const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
   const [index, setIndex] = useState(0);
-  const [picked, setPicked] = useState<number | null>(null);
-  const [score, setScore] = useState(0);
+  const [picked, setPicked] = useState<number | null>(null); // indeks opsi asli yang dipilih
+  const [wrong, setWrong] = useState<number[]>([]); // indeks soal (di daftar lengkap) yang salah
   const [finished, setFinished] = useState(false);
+  const running = items.length > 0 && !finished;
+  const ready = canUseAi(ai);
 
-  const restart = () => {
+  const start = (indexes: number[]) => {
+    setItems(makeItems(questions, indexes));
     setIndex(0);
     setPicked(null);
-    setScore(0);
+    setWrong([]);
     setFinished(false);
   };
+  const all = questions.map((_, i) => i);
+  const backToMenu = () => {
+    setItems([]);
+    setFinished(false);
+  };
+
+  // soal baru dari server: kembali ke menu
+  useEffect(() => {
+    setItems([]);
+    setFinished(false);
+  }, [questions]);
 
   const make = async () => {
     setBusy(true);
     try {
       const r = await generate({ data: { materialId: material.id } });
-      toast.success(`${r.count} soal latihan siap.`);
-      restart();
-      await invalidate();
+      toast.success(`${r.count} soal baru siap.`);
+      await Promise.all([invalidate(), qc.invalidateQueries({ queryKey: ["ai-status"] })]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal membuat soal.");
+      await qc.invalidateQueries({ queryKey: ["ai-status"] });
     } finally {
       setBusy(false);
     }
   };
 
+  const generator = (label: string) =>
+    !ai?.configured ? (
+      <AiNotReady />
+    ) : (
+      <div className="grid gap-2">
+        <Button
+          className="w-fit"
+          variant={questions.length ? "outline" : "default"}
+          disabled={busy || !ready}
+          onClick={() => void make()}
+        >
+          <Sparkles /> {busy ? "Membuat soal…" : label}
+        </Button>
+        {busy && (
+          <p className="text-sm text-muted-foreground">
+            Biasanya 20 sampai 60 detik. Jangan tutup halaman ini.
+          </p>
+        )}
+        <AiQuotaLine ai={ai} />
+        <p className="text-xs text-muted-foreground">{PRIVACY}</p>
+      </div>
+    );
+
   if (questions.length === 0) {
     return (
       <div className="grid gap-3">
         <p className="text-sm text-muted-foreground">
-          Belum ada soal. AI akan membuat 6 sampai 8 soal pilihan ganda dari isi materi ini, lengkap
-          dengan penjelasan jawabannya.
+          Belum ada soal. Tombol <strong>Siapkan materi dengan AI</strong> di tab Poin materi
+          membuat poin dan soal sekaligus. Kamu juga bisa membuat soalnya saja di sini.
         </p>
         {material.file_type !== "pdf" ? (
           <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
             AI hanya bisa membaca PDF.
           </p>
-        ) : !aiReady ? (
-          <AiNotReady />
         ) : (
-          <>
-            <Button className="w-fit" disabled={busy} onClick={() => void make()}>
-              <Sparkles /> {busy ? "Membuat soal…" : "Buat soal latihan"}
-            </Button>
-            {busy && (
-              <p className="text-sm text-muted-foreground">
-                Biasanya 10 sampai 40 detik. Jangan tutup halaman ini.
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">{PRIVACY}</p>
-          </>
+          generator("Buat soal latihan")
         )}
       </div>
     );
   }
 
+  // ---- menu: pilih berapa soal
+  if (items.length === 0) {
+    const sizes = [10, 20].filter((n) => n < questions.length);
+    return (
+      <div className="grid gap-4">
+        <div>
+          <p className="font-display text-3xl font-bold">{questions.length} soal</p>
+          <p className="text-sm text-muted-foreground">
+            Urutan soal dan pilihan jawabannya diacak tiap kali kamu mulai.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {sizes.map((n) => (
+            <Button key={n} variant="outline" onClick={() => start(shuffle(all).slice(0, n))}>
+              <Shuffle /> {n} soal acak
+            </Button>
+          ))}
+          <Button onClick={() => start(all)}>Semua {questions.length} soal</Button>
+        </div>
+        {material.file_type === "pdf" && generator("Buat soal baru")}
+      </div>
+    );
+  }
+
+  // ---- hasil
   if (finished) {
-    const pct = Math.round((score / questions.length) * 100);
+    const total = items.length;
+    const score = total - wrong.length;
+    const pct = Math.round((score / total) * 100);
     return (
       <div className="grid gap-3 text-center">
         <p className="font-display text-5xl font-bold">
-          {score}/{questions.length}
+          {score}/{total}
         </p>
         <p className="text-sm text-muted-foreground">
           {pct >= 80
@@ -301,52 +402,62 @@ export function QuizPanel({ material, aiReady }: { material: Material; aiReady: 
               : "Baca lagi poin-poin materinya, lalu ulangi latihan."}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={restart}>
-            <RotateCcw /> Ulangi soal
-          </Button>
-          {aiReady && (
-            <Button variant="outline" disabled={busy} onClick={() => void make()}>
-              {busy ? "Membuat…" : "Buat soal baru"}
+          {wrong.length > 0 && (
+            <Button onClick={() => start(wrong)}>
+              <RotateCcw /> Ulangi yang salah ({wrong.length})
             </Button>
           )}
+          <Button variant="outline" onClick={backToMenu}>
+            Kembali ke menu soal
+          </Button>
         </div>
       </div>
     );
   }
 
-  const q = questions[index]!;
+  // ---- mengerjakan
+  const item = items[index]!;
   const answered = picked !== null;
+  const correct = item.q.answerIndex;
   return (
     <div className="grid gap-4">
-      <p className="text-xs font-bold uppercase text-muted-foreground">
-        Soal {index + 1} dari {questions.length}
-      </p>
-      <p className="font-display text-xl font-bold leading-snug">{q.question}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold uppercase text-muted-foreground">
+          Soal {index + 1} dari {items.length}
+        </p>
+        <Button size="sm" variant="ghost" onClick={backToMenu}>
+          Selesai
+        </Button>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+        <div className="h-full bg-primary" style={{ width: `${(index / items.length) * 100}%` }} />
+      </div>
+      <p className="font-display text-xl font-bold leading-snug">{item.q.question}</p>
       <div className="grid gap-2" role="group" aria-label="Pilihan jawaban">
-        {q.options.map((opt, i) => {
-          const right = i === q.answerIndex;
+        {item.order.map((optIndex, shown) => {
+          const right = optIndex === correct;
           const state = !answered
             ? "border-border bg-background hover:bg-secondary"
             : right
               ? "border-primary bg-secondary"
-              : i === picked
+              : optIndex === picked
                 ? "border-destructive bg-destructive/10"
                 : "border-border bg-background opacity-70";
           return (
             <button
-              key={i}
+              key={optIndex}
               type="button"
               disabled={answered}
               onClick={() => {
-                setPicked(i);
-                if (right) setScore((s) => s + 1);
+                setPicked(optIndex);
+                if (!right) setWrong((w) => (w.includes(item.source) ? w : [...w, item.source]));
               }}
               className={`flex items-start gap-3 rounded-md border px-3 py-2.5 text-left text-sm ${state}`}
             >
               <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border border-current text-xs font-bold">
-                {String.fromCharCode(65 + i)}
+                {String.fromCharCode(65 + shown)}
               </span>
-              <span className="min-w-0 flex-1">{opt}</span>
+              <span className="min-w-0 flex-1">{item.q.options[optIndex]}</span>
             </button>
           );
         })}
@@ -354,32 +465,32 @@ export function QuizPanel({ material, aiReady }: { material: Material; aiReady: 
       {answered && (
         <div className="rounded-md bg-secondary/70 p-3 text-sm">
           <p className="font-semibold">
-            {picked === q.answerIndex
+            {picked === correct
               ? "Benar!"
-              : `Kurang tepat. Jawaban yang benar: ${String.fromCharCode(65 + q.answerIndex)}.`}
+              : `Kurang tepat. Jawaban yang benar: ${String.fromCharCode(65 + item.order.indexOf(correct))}.`}
           </p>
-          {q.explanation && <p className="mt-1 leading-relaxed">{q.explanation}</p>}
+          {item.q.explanation && <p className="mt-1 leading-relaxed">{item.q.explanation}</p>}
         </div>
       )}
       {answered && (
         <Button
           className="w-fit"
           onClick={() => {
-            if (index + 1 >= questions.length) setFinished(true);
+            if (index + 1 >= items.length) setFinished(true);
             else {
               setIndex(index + 1);
               setPicked(null);
             }
           }}
         >
-          {index + 1 >= questions.length ? "Lihat hasil" : "Soal berikutnya"}
+          {index + 1 >= items.length ? "Lihat hasil" : "Soal berikutnya"}
         </Button>
       )}
     </div>
   );
 }
 
-// ---------------------------------------------------------------- catatan
+// ------------------------------------------------------------ catatan
 export function NotesPanel({ material }: { material: Material }) {
   const [text, setText] = useState(material.study_notes);
   const [state, setState] = useState<"tersimpan" | "menyimpan" | "ubah">("tersimpan");

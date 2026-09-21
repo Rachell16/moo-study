@@ -1,14 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanCard } from "@/components/plan-card";
+import { AiQuotaLine } from "@/components/room-panels";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useCourses, useMaterials } from "@/hooks/use-schedules";
-import { usePointProgress } from "@/hooks/use-study";
+import { useAiStatus, usePointProgress } from "@/hooks/use-study";
 import { useSession } from "@/hooks/use-session";
-import { getAiStatus } from "@/lib/study.functions";
 import { cleanMaterialName } from "@/lib/study-plan";
 import type { Material } from "@/lib/schedule-utils";
 
@@ -34,12 +32,7 @@ function BelajarPage() {
   const courses = useCourses(userId);
   const materials = useMaterials(userId);
   const progress = usePointProgress(userId);
-  const statusFn = useServerFn(getAiStatus);
-  const ai = useQuery({
-    queryKey: ["ai-status", userId],
-    enabled: !!userId,
-    queryFn: () => statusFn(),
-  });
+  const ai = useAiStatus(userId);
 
   const all = materials.data ?? [];
   const prog = progress.data;
@@ -159,6 +152,9 @@ function BelajarPage() {
               Buka materi untuk membacanya berdampingan dengan poin-poinnya, berlatih soal, dan
               mencatat.
             </p>
+            <div className="mt-2">
+              <AiQuotaLine ai={ai.data} />
+            </div>
             {all.length === 0 && materials.isSuccess && (
               <p className="mt-4 text-sm text-muted-foreground">
                 Belum ada materi.{" "}

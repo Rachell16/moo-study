@@ -68,7 +68,11 @@ export async function askGemini(opts: {
         ],
       },
     ],
-    generationConfig: { responseMimeType: "application/json", temperature: 0.3 },
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.3,
+      maxOutputTokens: 20000,
+    },
   });
 
   for (let attempt = 0; ; attempt++) {

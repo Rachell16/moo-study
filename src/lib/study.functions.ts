@@ -6,11 +6,22 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const idInput = z.object({ materialId: z.string().uuid(), force: z.boolean().optional() });
 
+// Status AI untuk tampilan: apakah kunci sudah dipasang dan berapa sisa jatah hari ini.
 export const getAiStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
     const { geminiConfigured, geminiModel } = await import("./gemini.server");
-    return { configured: geminiConfigured(), model: geminiModel() };
+    const configured = geminiConfigured();
+    let quota: import("./ai-quota.server").Quota | null = null;
+    if (configured) {
+      try {
+        const { adminStore, limitsFromEnv, readQuota } = await import("./ai-quota.server");
+        quota = await readQuota(await adminStore(), context.userId, limitsFromEnv());
+      } catch {
+        quota = null; // tabel ai_usage belum ada: tampilan tanpa penghitung, dan pesan jelas muncul saat AI dipakai
+      }
+    }
+    return { configured, model: geminiModel(), quota };
   });
 
 async function loadPdf(
@@ -38,13 +49,36 @@ async function loadPdf(
   return new Uint8Array(await blob.arrayBuffer());
 }
 
-// Pecah materi jadi poin belajar. Poin lama diganti (progres "paham" ikut hilang), jadi klien meminta `force` untuk membuat ulang.
-export const generateOutline = createServerFn({ method: "POST" })
+// Jatah dicatat sebelum memanggil Gemini. Kalau panggilan gagal sebelum Gemini memproses (kunci salah, server sibuk, batas Google),
+// catatannya dibatalkan supaya tidak menghabiskan jatah; kalau Gemini sudah menjawab tapi jawabannya tidak terbaca, tetap terhitung.
+async function withQuota<T>(userId: string, kind: string, run: () => Promise<T>): Promise<T> {
+  const quota = await import("./ai-quota.server");
+  const { AiParseError } = await import("./study-ai");
+  const store = await quota.adminStore();
+  let slot: { id: string };
+  try {
+    slot = await quota.reserve(store, userId, kind, quota.limitsFromEnv());
+  } catch (e) {
+    if (e instanceof quota.QuotaError) throw e;
+    throw new Error(
+      "Pencatat jatah AI belum siap. Jalankan migrasi 20260921040000_ai_usage.sql di Supabase.",
+    );
+  }
+  try {
+    return await run();
+  } catch (e) {
+    if (!(e instanceof AiParseError)) await store.remove(slot.id).catch(() => undefined);
+    throw e;
+  }
+}
+
+// Satu permintaan ke Gemini menghasilkan poin materi sekaligus soal latihan. Poin lama diganti (tanda "paham" ikut hilang), jadi klien meminta `force` untuk membuat ulang.
+export const prepareMaterial = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(idInput)
   .handler(async ({ context, data }) => {
     const { askGemini } = await import("./gemini.server");
-    const { OUTLINE_PROMPT, SYSTEM_PROMPT, parseOutline } = await import("./study-ai");
+    const { COMBINED_PROMPT, SYSTEM_PROMPT, parseCombined } = await import("./study-ai");
     const { supabase, userId } = context;
 
     const { count } = await supabase
@@ -54,13 +88,13 @@ export const generateOutline = createServerFn({ method: "POST" })
     if ((count ?? 0) > 0 && !data.force) throw new Error("Poin materi ini sudah ada.");
 
     const pdf = await loadPdf(supabase, data.materialId);
-    const points = parseOutline(
-      await askGemini({ pdf, prompt: OUTLINE_PROMPT, system: SYSTEM_PROMPT }),
+    const parsed = await withQuota(userId, "materi", async () =>
+      parseCombined(await askGemini({ pdf, prompt: COMBINED_PROMPT, system: SYSTEM_PROMPT })),
     );
 
     await supabase.from("material_points").delete().eq("material_id", data.materialId);
     const { error } = await supabase.from("material_points").insert(
-      points.map((p, i) => ({
+      parsed.points.map((p, i) => ({
         user_id: userId,
         material_id: data.materialId,
         position: i + 1,
@@ -70,24 +104,30 @@ export const generateOutline = createServerFn({ method: "POST" })
       })),
     );
     if (error) throw new Error(error.message);
-    await supabase
-      .from("materials")
-      .update({ outline_generated_at: new Date().toISOString() })
-      .eq("id", data.materialId);
-    return { count: points.length };
+
+    const now = new Date().toISOString();
+    const patch: import("@/integrations/supabase/types").Database["public"]["Tables"]["materials"]["Update"] =
+      { outline_generated_at: now };
+    if (parsed.questions) {
+      patch.quiz = parsed.questions;
+      patch.quiz_generated_at = now;
+    }
+    await supabase.from("materials").update(patch).eq("id", data.materialId);
+    return { points: parsed.points.length, questions: parsed.questions?.length ?? 0 };
   });
 
+// Soal baru saja (mis. soal lama sudah hafal, atau soal dari permintaan gabungan rusak).
 export const generateQuiz = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator(idInput)
   .handler(async ({ context, data }) => {
     const { askGemini } = await import("./gemini.server");
     const { QUIZ_PROMPT, SYSTEM_PROMPT, parseQuiz } = await import("./study-ai");
-    const { supabase } = context;
+    const { supabase, userId } = context;
 
     const pdf = await loadPdf(supabase, data.materialId);
-    const questions = parseQuiz(
-      await askGemini({ pdf, prompt: QUIZ_PROMPT, system: SYSTEM_PROMPT }),
+    const questions = await withQuota(userId, "soal", async () =>
+      parseQuiz(await askGemini({ pdf, prompt: QUIZ_PROMPT, system: SYSTEM_PROMPT })),
     );
     const { error } = await supabase
       .from("materials")

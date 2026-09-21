@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Clock3, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -8,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { NotesPanel, PointsPanel, QuizPanel } from "@/components/room-panels";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useCourses, useMaterials } from "@/hooks/use-schedules";
-import { usePoints } from "@/hooks/use-study";
+import { useAiStatus, usePoints } from "@/hooks/use-study";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { BUCKET, openMaterial } from "@/lib/materials";
-import { getAiStatus } from "@/lib/study.functions";
 import { cleanMaterialName } from "@/lib/study-plan";
 
 export const Route = createFileRoute("/belajar/$id")({
@@ -45,12 +43,7 @@ function RoomPage() {
   const materials = useMaterials(userId);
   const courses = useCourses(userId);
   const points = usePoints(userId ? id : null);
-  const statusFn = useServerFn(getAiStatus);
-  const ai = useQuery({
-    queryKey: ["ai-status", userId],
-    enabled: !!userId,
-    queryFn: () => statusFn(),
-  });
+  const ai = useAiStatus(userId);
 
   const material = materials.data?.find((m) => m.id === id);
   const course = courses.data?.find((c) => c.id === material?.course_id);
@@ -191,16 +184,14 @@ function RoomPage() {
                   <PointsPanel
                     material={material}
                     points={points.data ?? []}
-                    aiReady={!!ai.data?.configured}
+                    ai={ai.data}
                     onPage={(p) => {
                       setPage(p);
                       if (window.matchMedia("(max-width: 767px)").matches) void openFile();
                     }}
                   />
                 )}
-                {tab === "soal" && (
-                  <QuizPanel material={material} aiReady={!!ai.data?.configured} />
-                )}
+                {tab === "soal" && <QuizPanel material={material} ai={ai.data} />}
                 {tab === "catatan" && <NotesPanel key={material.id} material={material} />}
               </div>
             </PaperCard>

@@ -11,10 +11,25 @@ export const OUTLINE_PROMPT =
   "sebutkan istilah kunci, dan rumus atau contoh singkat kalau ada), page (nomor halaman atau slide tempat poin itu dibahas, atau null kalau tidak jelas). " +
   'Balas hanya dengan JSON persis seperti ini: {"points":[{"heading":"...","summary":"...","page":3}]}';
 
+const QUIZ_RULES =
+  "Soal pilihan ganda: buat sebanyak yang wajar untuk materi ini, minimal 15 dan maksimal 30 soal (makin panjang dan padat materinya, makin banyak soalnya). " +
+  "Sebar soal merata ke seluruh bagian materi, campur tingkat kesulitan (mudah, sedang, sulit), dan hindari soal yang kembar atau hafalan sepele. " +
+  "Setiap soal punya tepat 4 opsi dengan satu jawaban benar, dan penjelasan singkat kenapa jawaban itu benar.";
+
 export const QUIZ_PROMPT =
-  "Baca materi kuliah (PDF) ini, lalu buat 6 sampai 8 soal pilihan ganda yang menguji pemahaman inti materi, bukan hafalan detail sepele. " +
-  "Setiap soal punya tepat 4 opsi dengan satu jawaban benar, dan penjelasan singkat kenapa jawaban itu benar. " +
-  'Balas hanya dengan JSON persis seperti ini: {"questions":[{"question":"...","options":["A","B","C","D"],"answerIndex":0,"explanation":"..."}]}';
+  "Baca materi kuliah (PDF) ini. " +
+  QUIZ_RULES +
+  ' Balas hanya dengan JSON persis seperti ini: {"questions":[{"question":"...","options":["A","B","C","D"],"answerIndex":0,"explanation":"..."}]}';
+
+// Poin materi dan soal latihan dalam satu permintaan, supaya hemat jatah harian.
+export const COMBINED_PROMPT =
+  "Baca materi kuliah (PDF) ini, lalu kerjakan dua hal sekaligus. " +
+  "(1) Pecah materi menjadi 6 sampai 15 poin belajar yang berurutan sesuai alur materi. Tiap poin: heading (judul singkat, maksimal 80 karakter), " +
+  "summary (penjelasan 2 sampai 4 kalimat yang mudah dipahami; sebutkan istilah kunci, dan rumus atau contoh singkat kalau ada), " +
+  "page (nomor halaman atau slide tempat poin itu dibahas, atau null kalau tidak jelas). " +
+  "(2) " +
+  QUIZ_RULES +
+  ' Balas hanya dengan JSON persis seperti ini: {"points":[{"heading":"...","summary":"...","page":3}],"questions":[{"question":"...","options":["A","B","C","D"],"answerIndex":0,"explanation":"..."}]}';
 
 export type OutlinePoint = { heading: string; summary: string; page: number | null };
 export type QuizQuestion = {
@@ -93,7 +108,7 @@ export function parseQuiz(text: string): QuizQuestion[] {
   });
   if (!good.length)
     throw new AiParseError("AI tidak menghasilkan soal yang bisa dipakai. Coba lagi.");
-  return good.slice(0, 12);
+  return good.slice(0, 40);
 }
 
 // Soal tersimpan sebagai JSON di database; periksa bentuknya sebelum dipakai di layar.
@@ -103,4 +118,20 @@ export function readStoredQuiz(value: unknown): QuizQuestion[] {
     const r = question.safeParse(q);
     return r.success ? [r.data] : [];
   });
+}
+
+// Hasil permintaan gabungan: poin wajib ada; soal yang rusak tidak menggagalkan poin (soal bisa dibuat terpisah).
+export function parseCombined(text: string): {
+  points: OutlinePoint[];
+  questions: QuizQuestion[] | null;
+} {
+  const json = extractJson(text);
+  const points = parseOutline(JSON.stringify(json));
+  let questions: QuizQuestion[] | null = null;
+  try {
+    questions = parseQuiz(JSON.stringify(json));
+  } catch {
+    questions = null;
+  }
+  return { points, questions };
 }

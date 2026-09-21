@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AiParseError, parseOutline, parseQuiz, readStoredQuiz } from "../src/lib/study-ai.ts";
+import {
+  AiParseError,
+  COMBINED_PROMPT,
+  QUIZ_PROMPT,
+  parseCombined,
+  parseOutline,
+  parseQuiz,
+  readStoredQuiz,
+} from "../src/lib/study-ai.ts";
 
 test("poin materi: JSON polos, dibungkus code fence, dan halaman opsional", () => {
   const raw = JSON.stringify({
@@ -68,4 +76,43 @@ test("soal dari database dibaca dengan aman", () => {
     ]).length,
     1,
   );
+});
+
+test("permintaan gabungan: poin dan soal dalam satu jawaban", () => {
+  const raw = JSON.stringify({
+    points: [{ heading: "Histogram", summary: "Grafik sebaran intensitas.", page: 2 }],
+    questions: Array.from({ length: 20 }, (_, i) => ({
+      question: `Soal ${i + 1}`,
+      options: ["A", "B", "C", "D"],
+      answerIndex: i % 4,
+      explanation: "e",
+    })),
+  });
+  const r = parseCombined(raw);
+  assert.equal(r.points.length, 1);
+  assert.equal(r.questions?.length, 20); // 20 soal tidak lagi dipotong jadi 12
+});
+
+test("permintaan gabungan: soal rusak tidak menggagalkan poin, poin rusak menggagalkan semuanya", () => {
+  const onlyPoints = JSON.stringify({
+    points: [{ heading: "H", summary: "S" }],
+    questions: "rusak",
+  });
+  const r = parseCombined(onlyPoints);
+  assert.equal(r.points.length, 1);
+  assert.equal(r.questions, null);
+  assert.throws(
+    () =>
+      parseCombined(
+        JSON.stringify({ questions: [{ question: "Q", options: ["a", "b"], answerIndex: 0 }] }),
+      ),
+    AiParseError,
+  );
+});
+
+test("prompt meminta soal banyak (15 sampai 30), bukan 6 sampai 8", () => {
+  for (const p of [QUIZ_PROMPT, COMBINED_PROMPT]) {
+    assert.match(p, /minimal 15 dan maksimal 30 soal/);
+    assert.doesNotMatch(p, /6 sampai 8 soal/);
+  }
 });
