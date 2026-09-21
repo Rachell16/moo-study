@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildAttemptPayload,
   fmtSeconds,
+  isCorrect,
   pct,
+  readReview,
   readWrong,
   summarize,
   trendOf,
@@ -76,4 +79,57 @@ test("soal yang salah dibaca dengan aman", () => {
   ]);
   assert.equal(r.length, 2);
   assert.deepEqual(r[1], { question: "Q2", answer: "A", picked: "", explanation: "" });
+});
+
+const q = (n: number, answerIndex: number) => ({
+  question: `Soal ${n}`,
+  options: ["A", "B", "C", "D"],
+  answerIndex,
+  explanation: `Penjelasan ${n}`,
+});
+
+test("payload latihan: semua soal disimpan beserta pilihan, dan yang salah diturunkan darinya", () => {
+  const p = buildAttemptPayload([
+    { q: q(1, 0), pickedIndex: 0 }, // benar
+    { q: q(2, 2), pickedIndex: 1 }, // salah
+    { q: q(3, 3), pickedIndex: 3 }, // benar
+  ]);
+  assert.equal(p.total, 3);
+  assert.equal(p.score, 2);
+  assert.equal(p.review.length, 3);
+  assert.equal(p.wrong.length, 1);
+  assert.deepEqual(p.wrong[0], {
+    question: "Soal 2",
+    answer: "C",
+    picked: "B",
+    explanation: "Penjelasan 2",
+  });
+  assert.deepEqual(p.review.map(isCorrect), [true, false, true]);
+});
+
+test("tinjau ulang: dibaca dari database dengan aman, entri rusak dilewati", () => {
+  const good = {
+    question: "Q",
+    options: ["a", "b", "c"],
+    answerIndex: 1,
+    pickedIndex: 2,
+    explanation: "e",
+  };
+  const r = readReview([
+    good,
+    { ...good, answerIndex: 9 },
+    { ...good, options: ["a"] },
+    { ...good, pickedIndex: "1" },
+    { question: "x" },
+    null,
+    3,
+  ]);
+  assert.equal(r.length, 1);
+  assert.equal(isCorrect(r[0]!), false);
+  assert.deepEqual(readReview(null), []);
+  assert.deepEqual(readReview("x"), []);
+  // hasil buildAttemptPayload selalu terbaca kembali utuh
+  const back = readReview(buildAttemptPayload([{ q: q(1, 2), pickedIndex: 0 }]).review);
+  assert.equal(back.length, 1);
+  assert.equal(back[0]!.pickedIndex, 0);
 });

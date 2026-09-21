@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,19 @@ export function QuizHistoryDialog({
           <p className="text-sm text-muted-foreground">Memuat riwayat…</p>
         ) : (
           <QuizHistory attempts={attempts.data ?? []} />
+        )}
+        {material && (
+          <p className="text-xs text-muted-foreground">
+            Mau mengerjakan ulang soalnya?{" "}
+            <Link
+              to="/belajar/$id"
+              params={{ id: material.id }}
+              className="font-semibold text-primary underline"
+            >
+              Buka di ruang belajar
+            </Link>
+            .
+          </p>
         )}
       </DialogContent>
     </Dialog>

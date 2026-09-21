@@ -267,6 +267,7 @@ export type Database = {
           id: string
           material_id: string
           mode: string
+          review: Json
           score: number
           total: number
           user_id: string
@@ -278,6 +279,7 @@ export type Database = {
           id?: string
           material_id: string
           mode: string
+          review?: Json
           score: number
           total: number
           user_id: string
@@ -289,6 +291,7 @@ export type Database = {
           id?: string
           material_id?: string
           mode?: string
+          review?: Json
           score?: number
           total?: number
           user_id?: string

@@ -17,6 +17,7 @@ export const MODE_LABEL: Record<string, string> = {
   acak20: "20 soal acak",
   semua: "Semua soal",
   ulang_salah: "Ulangi yang salah",
+  ulang_set: "Kerjakan ulang set yang sama",
 };
 
 export const pct = (a: Pick<AttemptLike, "score" | "total">) =>
@@ -74,4 +75,72 @@ export function fmtSeconds(seconds: number | null) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return m === 0 ? `${s} dtk` : s === 0 ? `${m} mnt` : `${m} mnt ${s} dtk`;
+}
+
+// ---- tinjau ulang: semua soal dalam satu latihan, lengkap dengan pilihanmu ----
+export type ReviewItem = {
+  question: string;
+  options: string[];
+  answerIndex: number; // indeks jawaban benar di `options`
+  pickedIndex: number; // indeks pilihanmu di `options`
+  explanation: string;
+};
+
+export const isCorrect = (r: ReviewItem) => r.pickedIndex === r.answerIndex;
+
+// Isi kolom `review` dari database dibaca dengan aman; entri yang rusak dilewati.
+export function readReview(value: unknown): ReviewItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((v) => {
+    if (!v || typeof v !== "object") return [];
+    const o = v as Record<string, unknown>;
+    const options = o["options"];
+    const a = o["answerIndex"];
+    const p = o["pickedIndex"];
+    if (
+      typeof o["question"] !== "string" ||
+      !Array.isArray(options) ||
+      options.length < 2 ||
+      !options.every((x) => typeof x === "string")
+    )
+      return [];
+    if (!Number.isInteger(a) || !Number.isInteger(p)) return [];
+    const ai = a as number;
+    const pi = p as number;
+    if (ai < 0 || ai >= options.length || pi < 0 || pi >= options.length) return [];
+    return [
+      {
+        question: o["question"],
+        options: options as string[],
+        answerIndex: ai,
+        pickedIndex: pi,
+        explanation: typeof o["explanation"] === "string" ? o["explanation"] : "",
+      },
+    ];
+  });
+}
+
+// Bentuk yang disimpan ke database untuk satu latihan.
+export function buildAttemptPayload(
+  answers: {
+    q: { question: string; options: string[]; answerIndex: number; explanation: string };
+    pickedIndex: number;
+  }[],
+) {
+  const review: ReviewItem[] = answers.map(({ q, pickedIndex }) => ({
+    question: q.question,
+    options: q.options,
+    answerIndex: q.answerIndex,
+    pickedIndex,
+    explanation: q.explanation,
+  }));
+  const wrong: WrongItem[] = review
+    .filter((r) => !isCorrect(r))
+    .map((r) => ({
+      question: r.question,
+      answer: r.options[r.answerIndex] ?? "",
+      picked: r.options[r.pickedIndex] ?? "",
+      explanation: r.explanation,
+    }));
+  return { score: review.length - wrong.length, total: review.length, review, wrong };
 }
