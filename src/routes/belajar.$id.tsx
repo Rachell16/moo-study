@@ -140,8 +140,8 @@ function RoomPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-            <PaperCard className="hidden p-2 lg:block">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:h-[max(26rem,calc(100dvh-17rem))] md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <PaperCard className="hidden min-h-0 flex-col p-2 md:flex">
               {!isPdf ? (
                 <p className="p-6 text-sm text-muted-foreground">
                   Pratinjau hanya tersedia untuk PDF. Klik “Buka file” untuk membuka slide ini.
@@ -155,7 +155,7 @@ function RoomPage() {
                   key={page ?? 0}
                   title={material.name}
                   src={`${pdf.data}#page=${page ?? 1}`}
-                  className="h-[72vh] w-full rounded-md border border-border bg-background"
+                  className="min-h-0 w-full flex-1 rounded-md border border-border bg-background"
                 />
               ) : (
                 <p className="p-6 text-sm text-muted-foreground">Memuat PDF…</p>
@@ -167,9 +167,9 @@ function RoomPage() {
               )}
             </PaperCard>
 
-            <PaperCard className="min-w-0">
+            <PaperCard className="flex min-h-0 min-w-0 flex-col md:overflow-hidden">
               <div
-                className="mb-4 flex flex-wrap gap-1 rounded-md bg-muted p-1"
+                className="mb-4 flex shrink-0 flex-wrap gap-1 rounded-md bg-muted p-1"
                 role="tablist"
                 aria-label="Bagian ruang belajar"
               >
@@ -186,19 +186,23 @@ function RoomPage() {
                   </Button>
                 ))}
               </div>
-              {tab === "poin" && (
-                <PointsPanel
-                  material={material}
-                  points={points.data ?? []}
-                  aiReady={!!ai.data?.configured}
-                  onPage={(p) => {
-                    setPage(p);
-                    if (window.matchMedia("(max-width: 1023px)").matches) void openFile();
-                  }}
-                />
-              )}
-              {tab === "soal" && <QuizPanel material={material} aiReady={!!ai.data?.configured} />}
-              {tab === "catatan" && <NotesPanel key={material.id} material={material} />}
+              <div className="md:min-h-0 md:flex-1 md:overflow-y-auto md:pr-1">
+                {tab === "poin" && (
+                  <PointsPanel
+                    material={material}
+                    points={points.data ?? []}
+                    aiReady={!!ai.data?.configured}
+                    onPage={(p) => {
+                      setPage(p);
+                      if (window.matchMedia("(max-width: 767px)").matches) void openFile();
+                    }}
+                  />
+                )}
+                {tab === "soal" && (
+                  <QuizPanel material={material} aiReady={!!ai.data?.configured} />
+                )}
+                {tab === "catatan" && <NotesPanel key={material.id} material={material} />}
+              </div>
             </PaperCard>
           </div>
         </>
