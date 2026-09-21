@@ -1,4 +1,4 @@
-// Pengaturan timer: preset Pomodoro atau angka sendiri. Disimpan di browser (localStorage).
+// Pengaturan timer: preset Podomoro atau angka sendiri. Disimpan di browser (localStorage).
 
 export type TimerSettings = {
   focus: number; // menit fokus
@@ -11,9 +11,30 @@ export type TimerSettings = {
 };
 
 export const PRESETS = [
-  { id: "pomodoro", label: "Pomodoro 25/5", focus: 25, short: 5, long: 15, cycle: 4 },
-  { id: "lima-puluh", label: "50/10", focus: 50, short: 10, long: 20, cycle: 3 },
-  { id: "deep", label: "Deep work 90/20", focus: 90, short: 20, long: 30, cycle: 2 },
+  {
+    id: "Podomoro",
+    label: "Podomoro 25/5",
+    focus: 25,
+    short: 5,
+    long: 15,
+    cycle: 4,
+  },
+  {
+    id: "lima-puluh",
+    label: "50/10",
+    focus: 50,
+    short: 10,
+    long: 20,
+    cycle: 3,
+  },
+  {
+    id: "deep",
+    label: "Deep work 90/20",
+    focus: 90,
+    short: 20,
+    long: 30,
+    cycle: 2,
+  },
 ] as const;
 
 export const DEFAULTS: TimerSettings = {
@@ -34,7 +55,11 @@ export const LIMITS = {
   goal: [1, 12],
 } as const;
 
-const clamp = (n: unknown, [lo, hi]: readonly [number, number], fallback: number) => {
+const clamp = (
+  n: unknown,
+  [lo, hi]: readonly [number, number],
+  fallback: number,
+) => {
   const v = Math.round(Number(n));
   return Number.isFinite(v) ? Math.min(Math.max(v, lo), hi) : fallback;
 };
@@ -53,7 +78,11 @@ export function sanitize(input: Partial<TimerSettings>): TimerSettings {
 
 export const presetIdOf = (s: TimerSettings): string =>
   PRESETS.find(
-    (p) => p.focus === s.focus && p.short === s.short && p.long === s.long && p.cycle === s.cycle,
+    (p) =>
+      p.focus === s.focus &&
+      p.short === s.short &&
+      p.long === s.long &&
+      p.cycle === s.cycle,
   )?.id ?? "kustom";
 
 const KEY = "moo-timer-settings";
