@@ -18,6 +18,7 @@ const KIND_LABEL: Record<PlanItem["kind"], string> = {
   ulas: "Ulas kuliah",
   lanjut: "Lanjutkan",
   review: "Review",
+  ulang: "Ulang berjarak",
 };
 
 // "Ayo belajar ini hari ini": usulan belajar dari jadwal, deadline, ujian, dan materi yang belum di-review.
@@ -133,6 +134,13 @@ export function PlanCard({
                     <Button asChild size="sm" variant="outline">
                       <Link to="/belajar/$id" params={{ id: it.materialId }}>
                         Buka <ArrowRight />
+                      </Link>
+                    </Button>
+                  )}
+                  {it.kind === "ulang" && (
+                    <Button asChild size="sm">
+                      <Link to="/belajar/ulang">
+                        Mulai <ArrowRight />
                       </Link>
                     </Button>
                   )}

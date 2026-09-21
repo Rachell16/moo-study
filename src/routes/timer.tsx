@@ -21,12 +21,12 @@ export const Route = createFileRoute("/timer")({
       { title: "Timer Belajar — Moo Study" },
       {
         name: "description",
-        content: "Podomoro yang tenang untuk sesi belajar fokus.",
+        content: "Podomororo yang tenang untuk sesi belajar fokus.",
       },
       { property: "og:title", content: "Timer Belajar — Moo Study" },
       {
         property: "og:description",
-        content: "Podomoro yang tenang untuk sesi belajar fokus.",
+        content: "Podomororo yang tenang untuk sesi belajar fokus.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

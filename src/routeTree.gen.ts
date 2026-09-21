@@ -19,7 +19,10 @@ import { Route as UjianRouteImport } from './routes/ujian'
 import { Route as WidgetRouteImport } from './routes/widget'
 import { Route as BelajarIndexRouteImport } from './routes/belajar.index'
 import { Route as BelajarIdRouteImport } from './routes/belajar.$id'
+import { Route as BelajarRencanaRouteImport } from './routes/belajar.rencana'
+import { Route as BelajarUlangRouteImport } from './routes/belajar.ulang'
 import { Route as ApiGoogleCallbackRouteImport } from './routes/api/google/callback'
+import { Route as BelajarRangkumanCourseIdRouteImport } from './routes/belajar.rangkuman.$courseId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -71,11 +74,27 @@ const BelajarIdRoute = BelajarIdRouteImport.update({
   path: '/belajar/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BelajarRencanaRoute = BelajarRencanaRouteImport.update({
+  id: '/belajar/rencana',
+  path: '/belajar/rencana',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BelajarUlangRoute = BelajarUlangRouteImport.update({
+  id: '/belajar/ulang',
+  path: '/belajar/ulang',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoogleCallbackRoute = ApiGoogleCallbackRouteImport.update({
   id: '/api/google/callback',
   path: '/api/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BelajarRangkumanCourseIdRoute =
+  BelajarRangkumanCourseIdRouteImport.update({
+    id: '/belajar/rangkuman/$courseId',
+    path: '/belajar/rangkuman/$courseId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,8 +106,11 @@ export interface FileRoutesByFullPath {
   '/ujian': typeof UjianRoute
   '/widget': typeof WidgetRoute
   '/belajar/$id': typeof BelajarIdRoute
+  '/belajar/rencana': typeof BelajarRencanaRoute
+  '/belajar/ulang': typeof BelajarUlangRoute
   '/belajar/': typeof BelajarIndexRoute
   '/api/google/callback': typeof ApiGoogleCallbackRoute
+  '/belajar/rangkuman/$courseId': typeof BelajarRangkumanCourseIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -100,8 +122,11 @@ export interface FileRoutesByTo {
   '/ujian': typeof UjianRoute
   '/widget': typeof WidgetRoute
   '/belajar/$id': typeof BelajarIdRoute
+  '/belajar/rencana': typeof BelajarRencanaRoute
+  '/belajar/ulang': typeof BelajarUlangRoute
   '/belajar': typeof BelajarIndexRoute
   '/api/google/callback': typeof ApiGoogleCallbackRoute
+  '/belajar/rangkuman/$courseId': typeof BelajarRangkumanCourseIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -114,8 +139,11 @@ export interface FileRoutesById {
   '/ujian': typeof UjianRoute
   '/widget': typeof WidgetRoute
   '/belajar/$id': typeof BelajarIdRoute
+  '/belajar/rencana': typeof BelajarRencanaRoute
+  '/belajar/ulang': typeof BelajarUlangRoute
   '/belajar/': typeof BelajarIndexRoute
   '/api/google/callback': typeof ApiGoogleCallbackRoute
+  '/belajar/rangkuman/$courseId': typeof BelajarRangkumanCourseIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -129,8 +157,11 @@ export interface FileRouteTypes {
     | '/ujian'
     | '/widget'
     | '/belajar/$id'
+    | '/belajar/rencana'
+    | '/belajar/ulang'
     | '/belajar/'
     | '/api/google/callback'
+    | '/belajar/rangkuman/$courseId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -142,8 +173,11 @@ export interface FileRouteTypes {
     | '/ujian'
     | '/widget'
     | '/belajar/$id'
+    | '/belajar/rencana'
+    | '/belajar/ulang'
     | '/belajar'
     | '/api/google/callback'
+    | '/belajar/rangkuman/$courseId'
   id:
     | '__root__'
     | '/'
@@ -155,8 +189,11 @@ export interface FileRouteTypes {
     | '/ujian'
     | '/widget'
     | '/belajar/$id'
+    | '/belajar/rencana'
+    | '/belajar/ulang'
     | '/belajar/'
     | '/api/google/callback'
+    | '/belajar/rangkuman/$courseId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -169,8 +206,11 @@ export interface RootRouteChildren {
   UjianRoute: typeof UjianRoute
   WidgetRoute: typeof WidgetRoute
   BelajarIdRoute: typeof BelajarIdRoute
+  BelajarRencanaRoute: typeof BelajarRencanaRoute
+  BelajarUlangRoute: typeof BelajarUlangRoute
   BelajarIndexRoute: typeof BelajarIndexRoute
   ApiGoogleCallbackRoute: typeof ApiGoogleCallbackRoute
+  BelajarRangkumanCourseIdRoute: typeof BelajarRangkumanCourseIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -245,11 +285,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BelajarIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/belajar/rencana': {
+      id: '/belajar/rencana'
+      path: '/belajar/rencana'
+      fullPath: '/belajar/rencana'
+      preLoaderRoute: typeof BelajarRencanaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/belajar/ulang': {
+      id: '/belajar/ulang'
+      path: '/belajar/ulang'
+      fullPath: '/belajar/ulang'
+      preLoaderRoute: typeof BelajarUlangRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google/callback': {
       id: '/api/google/callback'
       path: '/api/google/callback'
       fullPath: '/api/google/callback'
       preLoaderRoute: typeof ApiGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/belajar/rangkuman/$courseId': {
+      id: '/belajar/rangkuman/$courseId'
+      path: '/belajar/rangkuman/$courseId'
+      fullPath: '/belajar/rangkuman/$courseId'
+      preLoaderRoute: typeof BelajarRangkumanCourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -265,8 +326,11 @@ const rootRouteChildren: RootRouteChildren = {
   UjianRoute: UjianRoute,
   WidgetRoute: WidgetRoute,
   BelajarIdRoute: BelajarIdRoute,
+  BelajarRencanaRoute: BelajarRencanaRoute,
+  BelajarUlangRoute: BelajarUlangRoute,
   BelajarIndexRoute: BelajarIndexRoute,
   ApiGoogleCallbackRoute: ApiGoogleCallbackRoute,
+  BelajarRangkumanCourseIdRoute: BelajarRangkumanCourseIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -90,7 +90,7 @@ function MateriPage() {
         continue;
       }
       const safe = file.name.replace(/[^\w.\- ]+/g, "_");
-      const path = `${userId}/${crypto.randomUUID()}-${safe}`;
+      const path = `${userId}/${crypto.randomoooo~ID()}-${safe}`;
       const up = await supabase.storage.from(BUCKET).upload(path, file);
       if (up.error) {
         toast.error(`${file.name}: ${up.error.message}`);

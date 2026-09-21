@@ -204,3 +204,9 @@
 .cow-pop { animation: cow-pop .22s ease-out both; }
 .cow-wiggle { animation: cow-wiggle .9s ease-in-out 3; }
 @media (prefers-reduced-motion: reduce) { .cow-pop, .cow-wiggle { animation: none; } }
+
+/* ---- cetak: rangkuman ujian dibuat bersih di kertas putih ---- */
+@media print {
+  html, body { background: #fff !important; }
+  .min-h-screen { min-height: 0 !important; }
+}

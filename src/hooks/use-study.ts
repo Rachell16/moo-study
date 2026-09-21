@@ -10,6 +10,8 @@ import {
 } from "@/hooks/use-schedules";
 import { useServerFn } from "@tanstack/react-start";
 import { getAiStatus } from "@/lib/study.functions";
+import { useQuizSummaries } from "@/hooks/use-quiz-history";
+import { useDueCount } from "@/hooks/use-spaced";
 import { buildPlan } from "@/lib/study-plan";
 import { addDays, startOfDay, ymd } from "@/lib/schedule-utils";
 import type { Database } from "@/integrations/supabase/types";
@@ -74,9 +76,14 @@ export function usePlan(userId: string | null) {
   const materials = useMaterials(userId);
   const courses = useCourses(userId);
   const progress = usePointProgress(userId);
+  const summaries = useQuizSummaries(userId);
+  const dueCount = useDueCount(userId);
 
   const ready =
-    !!now && [schedules, tasks, exams, materials, courses, progress].every((q) => q.isSuccess);
+    !!now &&
+    [schedules, tasks, exams, materials, courses, progress, summaries, dueCount].every(
+      (q) => q.isSuccess,
+    );
 
   const plan = useMemo(() => {
     if (!now || !ready) return null;
@@ -88,6 +95,12 @@ export function usePlan(userId: string | null) {
       materials: materials.data ?? EMPTY,
       courses: courses.data ?? EMPTY,
       progress: progress.data ?? new Map(),
+      quizBest: new Map(
+        [...(summaries.data ?? new Map()).entries()].flatMap(([id, s]) =>
+          s.best !== null ? [[id, s.best] as [string, number]] : [],
+        ),
+      ),
+      dueCards: dueCount.data ?? 0,
     });
   }, [
     now,

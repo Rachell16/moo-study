@@ -1,8 +1,9 @@
 // Rencana belajar hari ini: pilih apa yang paling perlu dipelajari lalu tempatkan di waktu kosong.
 // Berbasis aturan (tanpa AI dan tanpa koneksi), jadi gratis, cepat, dan hasilnya bisa dijelaskan.
+import { buildRoadmaps } from "./study-roadmap.ts";
 import { daysUntil, fmtTime, type Course, type Material, type Schedule } from "./schedule-utils.ts";
 
-export type PlanKind = "tugas" | "ujian" | "persiapan" | "ulas" | "lanjut" | "review";
+export type PlanKind = "tugas" | "ujian" | "persiapan" | "ulas" | "lanjut" | "review" | "ulang";
 
 export type PlanItem = {
   key: string;
@@ -26,6 +27,8 @@ export type PlanInput = {
   materials: Material[];
   courses: Course[];
   progress: Map<string, { done: number; total: number }>; // poin materi yang sudah dipahami
+  quizBest?: Map<string, number>; // skor latihan terbaik (persen) per materi
+  dueCards?: number; // kartu hafalan berjarak yang jatuh tempo hari ini
   dayStartHour?: number;
   dayEndHour?: number;
   maxBlocks?: number;
@@ -148,29 +151,50 @@ export function buildPlan(input: PlanInput): Plan {
     });
   }
 
-  // 2) ujian: review materi yang belum tersentuh
-  for (const e of input.exams) {
-    const start = new Date(e.starts_at);
-    if (start.getTime() < now.getTime()) continue;
-    const d = daysUntil(start, now);
+  // 2) ujian: ambil bagian hari ini dari peta jalan menuju ujian (materi dibagi merata ke hari-hari sebelum ujian)
+  for (const road of buildRoadmaps({
+    now,
+    exams: input.exams,
+    materials: input.materials,
+    courses,
+    progress,
+    quizBest: input.quizBest ?? new Map(),
+  })) {
+    const d = road.daysLeft;
     const base = d <= 3 ? 96 : d <= 7 ? 78 : d <= 14 ? 56 : d <= 30 ? 32 : 0;
-    if (!base || !e.exam_kind) continue;
-    const all = input.materials.filter(
-      (m) => m.course_id === e.course_id && m.exam_scope === e.exam_kind && m.reviewed_at === null,
-    );
-    const next = pending(e.course_id, e.exam_kind)[0];
-    if (!next) continue;
-    const kind = e.exam_kind.toUpperCase();
+    const today = road.days[0];
+    if (!base || !today?.isToday) continue;
     const when = d === 0 ? "hari ini" : d === 1 ? "besok" : `${d} hari lagi`;
+    today.items.forEach((it, i) => {
+      if (it.materialId && used.has(it.materialId)) return;
+      add({
+        key: i === 0 ? `ujian:${road.exam.id}` : `ujian:${road.exam.id}:${i + 1}`,
+        kind: "ujian",
+        title: it.title,
+        reason:
+          it.kind === "review"
+            ? `${road.kindLabel} ${road.courseName} ${when}, ${road.pending} materi belum di-review.`
+            : `${road.kindLabel} ${road.courseName} ${when}. Saatnya latihan soal.`,
+        minutes: it.minutes,
+        score: base,
+        courseId: it.courseId,
+        materialId: it.materialId,
+      });
+    });
+  }
+
+  // kartu hafalan berjarak yang jatuh tempo
+  if ((input.dueCards ?? 0) > 0) {
+    const n = input.dueCards!;
     add({
-      key: `ujian:${e.id}`,
-      kind: "ujian",
-      title: `Review ${cleanMaterialName(next.name)}`,
-      reason: `${kind} ${courseOf(e.course_id)?.name ?? "ujian"} ${when}, ${all.length} materi belum di-review.`,
-      minutes: 50,
-      score: base,
-      courseId: e.course_id,
-      materialId: next.id,
+      key: "ulang",
+      kind: "ulang",
+      title: `Ulang ${n} kartu hafalan`,
+      reason: "Soal yang pernah salah, diulang tepat sebelum lupa.",
+      minutes: Math.min(Math.max(Math.ceil(n * 0.7), 5), 20),
+      score: 74,
+      courseId: null,
+      materialId: null,
     });
   }
 

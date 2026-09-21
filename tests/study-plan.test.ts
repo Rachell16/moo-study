@@ -268,3 +268,72 @@ test("tanpa apa-apa: rencana kosong", () => {
   });
   assert.deepEqual(r, { items: [], note: null });
 });
+
+test("kartu hafalan yang jatuh tempo jadi satu usulan dengan durasi menyesuaikan jumlah kartu", () => {
+  const items = buildPlan({
+    now,
+    schedules: [],
+    tasks: [],
+    exams: [],
+    materials: [],
+    courses,
+    progress: new Map(),
+    dueCards: 12,
+  }).items;
+  const ulang = items.find((i) => i.kind === "ulang")!;
+  assert.equal(ulang.title, "Ulang 12 kartu hafalan");
+  assert.equal(ulang.minutes, 9);
+  assert.equal(
+    buildPlan({
+      now,
+      schedules: [],
+      tasks: [],
+      exams: [],
+      materials: [],
+      courses,
+      progress: new Map(),
+      dueCards: 100,
+    }).items[0]!.minutes,
+    20,
+  ); // maksimal 20 menit
+  assert.equal(
+    buildPlan({
+      now,
+      schedules: [],
+      tasks: [],
+      exams: [],
+      materials: [],
+      courses,
+      progress: new Map(),
+      dueCards: 0,
+    }).items.length,
+    0,
+  );
+});
+
+test("ujian 2 hari lagi: beberapa materi jatuh di hari ini menurut peta jalan, tiap materi jadi usulan sendiri", () => {
+  const near = [
+    sched(
+      "e2",
+      "UTS Visi Komputer",
+      "ujian",
+      new Date(2026, 8, 23, 8).toISOString(),
+      new Date(2026, 8, 23, 10).toISOString(),
+      { exam_kind: "uts", course_id: "vk" },
+    ),
+  ];
+  const mats = ["v1", "v2", "v3", "v4"].map((id, i) => material(id, "vk", `Kuliah 0${i + 1}.pdf`));
+  const { items } = buildPlan({
+    now,
+    schedules: [],
+    tasks: [],
+    exams: near,
+    materials: mats,
+    courses,
+    progress: new Map(),
+  });
+  const uts = items.filter((i) => i.kind === "ujian");
+  assert.equal(uts.length, 2); // 4 materi dibagi 2 hari: 2 hari ini
+  assert.deepEqual(uts.map((i) => i.materialId).sort(), ["v1", "v2"]);
+  assert.match(uts[0]!.reason, /UTS Visi Komputer 2 hari lagi, 4 materi belum di-review/);
+});

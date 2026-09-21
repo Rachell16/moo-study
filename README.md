@@ -9,7 +9,7 @@ TanStack Start (React) + Supabase (Postgres, Auth, Storage). Tidak lagi bergantu
 - **Jadwal**: kalender mingguan. Ketik satu kalimat di kotak atas, mis. "rapat hima hari rabu jam 12.00", dan hari, jam, serta lokasinya (kata "di …") dibaca otomatis lalu langsung dijadwalkan. Tombol **Impor jadwal kuliah** membaca jadwal dari teks chat (hari, jam, mata kuliah, ruangan, PJ), lalu mengulangnya tiap minggu.
 - **Tugas**: tempel daftar tugas, nama, tanggal, dan jam terbaca otomatis. Tanda ‼️ berarti penting. Singkatan seperti SMA, ML, CV dihubungkan ke mata kuliahnya. Tiap tugas jadi blok 30 menit di Jadwal yang berakhir di deadline.
 - **Ujian**: hitung mundur UTS/UAS per mata kuliah, plus progres materi yang sudah dan belum di-review.
-- **Timer**: preset Podomoro (25/5, 50/10, 90/20) atau angka sendiri, istirahat panjang tiap beberapa sesi, mulai otomatis, dan bunyi saat selesai. Sesi fokus yang selesai tercatat, jadi streak dan ringkasan "sesi hari ini" nyata. Streak kembali ke 0 kalau ada hari yang terlewat.
+- **Timer**: preset Podomororo (25/5, 50/10, 90/20) atau angka sendiri, istirahat panjang tiap beberapa sesi, mulai otomatis, dan bunyi saat selesai. Sesi fokus yang selesai tercatat, jadi streak dan ringkasan "sesi hari ini" nyata. Streak kembali ke 0 kalau ada hari yang terlewat.
 - **Ruang belajar** (`/belajar`): rencana "ayo belajar ini hari ini" yang disusun dari jadwal kuliah, deadline tugas, jadwal ujian, dan materi yang belum di-review, lalu ditempatkan di waktu kosong (tombol Jadwalkan memasukkannya ke kalender). Per materi ada ruang belajar (hasil tiap latihan soal tersimpan di **riwayat**: skor, tren, dan seluruh soal beserta jawabanmu yang bisa **ditinjau ulang** (filter semua/salah/benar) atau dikerjakan ulang, juga terlihat di halaman Materi): PDF di kiri, di kanan poin-poin materi (dibuat AI) dengan tanda "sudah paham", latihan soal pilihan ganda, dan catatan.
 - **Materi**: dikelompokkan per mata kuliah, lalu per Kuliah dan Praktikum. Tiap file ditandai untuk UTS atau UAS dan punya status review.
 - **Google Calendar**: agenda, deadline tugas, dan ujian ikut tersinkron. Ada pengingat otomatis (tugas H-1 dan 3 jam, ujian H-3 dan H-1).
@@ -113,3 +113,11 @@ Catatan:
 - **Timer melayang**: timer hidup di provider global (`use-timer.tsx`), jadi tetap jalan dan terlihat sebagai pil kecil saat membuka materi atau halaman lain. Keadaannya disimpan, jadi pulih setelah halaman dimuat ulang.
 - **Widget** (`/widget`): tampilan ringkas untuk jadwal berikutnya, timer, dan streak. Pasang halaman itu ke layar utama untuk ikon tersendiri. Ini bukan widget bawaan sistem (iOS atau Android), karena aplikasi web tidak bisa membuatnya.
 - **PWA**: `manifest.webmanifest`, `sw.js`, dan `offline.html` di `public/`. Service worker sengaja tidak menyimpan halaman atau data (hanya halaman offline), supaya tidak pernah menampilkan versi lama setelah deploy.
+
+## Rencana ujian, kartu berjarak, dan rangkuman
+
+- **Rencana menuju ujian** (`/belajar/rencana`): materi yang belum di-review dibagi merata ke hari-hari sebelum UTS/UAS (dua hari terakhir untuk latihan soal, dimulai dari materi dengan skor terendah). Dihitung ulang tiap hari, jadi yang terlewat bergeser otomatis. Bagian hari ini ikut masuk ke rencana harian.
+- **Ulang berjarak** (`/belajar/ulang`): soal yang salah waktu latihan jadi kartu (sistem kotak Leitner: 1, 3, 7, 14, 30 hari). Benar naik kotak, salah kembali ke kotak 1. Kartu yang jatuh tempo masuk rencana harian. Tabel: `review_cards`.
+- **Rangkuman siap ujian** (`/belajar/rangkuman/<id mata kuliah>`): poin materi, catatan, dan soal yang sering salah dalam satu halaman. Bisa dicetak atau disimpan sebagai PDF (lewat dialog cetak browser), atau disalin sebagai Markdown untuk Notion.
+- **Jendela mengambang**: tombol di panel sapi membuka timer dan sapi dalam jendela yang melayang di atas semua aplikasi (Chrome dan Edge di komputer).
+- Migrasi baru: `20260921070000_review_cards.sql`.

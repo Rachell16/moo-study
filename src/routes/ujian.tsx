@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarPlus, ExternalLink, FileText, Undo2 } from "lucide-react";
+import { ArrowRight, CalendarPlus, ExternalLink, FileText, Undo2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -114,6 +114,11 @@ function UjianPage() {
                       {fmtDayDate(new Date(next.starts_at))}, {fmtTime(new Date(next.starts_at))}
                       {next.location ? `, ${next.location}` : ""}
                     </p>
+                    <Button asChild variant="outline" size="sm" className="mt-3">
+                      <Link to="/belajar/rencana">
+                        Rencana menuju ujian <ArrowRight />
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -271,6 +276,17 @@ function ExamBlock({
         </p>
       ) : (
         <>
+          <div className="mt-2">
+            <Button asChild variant="ghost" size="sm" className="-ml-3">
+              <Link
+                to="/belajar/rangkuman/$courseId"
+                params={{ courseId: course.id }}
+                search={{ scope: kind === "uas" ? "uas" : "uts" }}
+              >
+                <FileText /> Rangkuman {label}
+              </Link>
+            </Button>
+          </div>
           <div className="mt-3 flex items-center gap-3">
             <div
               className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted"

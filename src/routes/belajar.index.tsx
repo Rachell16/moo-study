@@ -6,6 +6,7 @@ import { AiQuotaLine } from "@/components/room-panels";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useCourses, useMaterials } from "@/hooks/use-schedules";
 import { useQuizSummaries } from "@/hooks/use-quiz-history";
+import { useDueCount } from "@/hooks/use-spaced";
 import { useAiStatus, usePointProgress } from "@/hooks/use-study";
 import { useSession } from "@/hooks/use-session";
 import { cleanMaterialName } from "@/lib/study-plan";
@@ -34,6 +35,7 @@ function BelajarPage() {
   const materials = useMaterials(userId);
   const progress = usePointProgress(userId);
   const summaries = useQuizSummaries(userId);
+  const dueCount = useDueCount(userId);
   const ai = useAiStatus(userId);
 
   const all = materials.data ?? [];
@@ -121,6 +123,54 @@ function BelajarPage() {
       ) : (
         <>
           <PlanCard userId={userId} />
+
+          <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
+            <PaperCard>
+              <p className="section-kicker">Ujian</p>
+              <h2 className="font-display text-xl font-bold">Rencana menuju ujian</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Materi dibagi ke hari-hari sebelum UTS atau UAS.
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link to="/belajar/rencana">Lihat rencana</Link>
+              </Button>
+            </PaperCard>
+            <PaperCard>
+              <p className="section-kicker">Biar nggak lupa</p>
+              <h2 className="font-display text-xl font-bold">Ulang berjarak</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {dueCount.data
+                  ? `${dueCount.data} kartu jatuh tempo hari ini.`
+                  : "Tidak ada kartu jatuh tempo. Soal yang salah waktu latihan jadi kartu."}
+              </p>
+              <Button
+                asChild
+                size="sm"
+                className="mt-3"
+                variant={dueCount.data ? "default" : "outline"}
+              >
+                <Link to="/belajar/ulang">{dueCount.data ? "Mulai ulang" : "Buka"}</Link>
+              </Button>
+            </PaperCard>
+            <PaperCard>
+              <p className="section-kicker">Siap ujian</p>
+              <h2 className="font-display text-xl font-bold">Rangkuman</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Poin, catatan, dan soal yang sering salah. Bisa dicetak.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {(courses.data ?? [])
+                  .filter((c) => all.some((m) => m.course_id === c.id))
+                  .map((c) => (
+                    <Button key={c.id} asChild size="sm" variant="outline">
+                      <Link to="/belajar/rangkuman/$courseId" params={{ courseId: c.id }}>
+                        {c.code}
+                      </Link>
+                    </Button>
+                  ))}
+              </div>
+            </PaperCard>
+          </div>
 
           {ai.isSuccess && !ai.data.configured && (
             <PaperCard className="mt-5 border-dashed">

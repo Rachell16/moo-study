@@ -44,7 +44,7 @@ export function StudyShell({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar px-4 py-5 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 print:hidden flex-col border-r border-border bg-sidebar px-4 py-5 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
@@ -93,13 +93,13 @@ export function StudyShell({
       </aside>
       {open && (
         <button
-          className="fixed inset-0 z-30 bg-foreground/20 md:hidden"
+          className="fixed inset-0 z-30 bg-foreground/20 md:hidden print:hidden"
           onClick={() => setOpen(false)}
           aria-label="Tutup menu"
         />
       )}
-      <div className="min-h-screen md:pl-64">
-        <header className="sticky top-0 z-20 flex min-h-20 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur md:px-8">
+      <div className="min-h-screen md:pl-64 print:pl-0">
+        <header className="sticky top-0 z-20 flex min-h-20 print:hidden items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur md:px-8">
           <Button
             size="icon"
             variant="outline"
@@ -132,7 +132,9 @@ export function StudyShell({
             </Button>
           )}
         </header>
-        <main className="mx-auto w-full max-w-7xl p-4 md:p-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl p-4 md:p-8 print:max-w-none print:p-0">
+          {children}
+        </main>
       </div>
     </div>
   );

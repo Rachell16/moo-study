@@ -1,4 +1,4 @@
-// Pengaturan timer: preset Podomoro atau angka sendiri. Disimpan di browser (localStorage).
+// Pengaturan timer: preset Podomororo atau angka sendiri. Disimpan di browser (localStorage).
 
 export type TimerSettings = {
   focus: number; // menit fokus
@@ -12,8 +12,8 @@ export type TimerSettings = {
 
 export const PRESETS = [
   {
-    id: "Podomoro",
-    label: "Podomoro 25/5",
+    id: "Podomororo",
+    label: "Podomororo 25/5",
     focus: 25,
     short: 5,
     long: 15,

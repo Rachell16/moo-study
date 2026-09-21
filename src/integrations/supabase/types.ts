@@ -307,6 +307,59 @@ export type Database = {
           },
         ]
       }
+      review_cards: {
+        Row: {
+          box: number
+          correct_count: number
+          created_at: string
+          due_at: string
+          id: string
+          last_reviewed_at: string | null
+          material_id: string
+          qhash: string
+          question: Json
+          updated_at: string
+          user_id: string
+          wrong_count: number
+        }
+        Insert: {
+          box?: number
+          correct_count?: number
+          created_at?: string
+          due_at?: string
+          id?: string
+          last_reviewed_at?: string | null
+          material_id: string
+          qhash: string
+          question: Json
+          updated_at?: string
+          user_id: string
+          wrong_count?: number
+        }
+        Update: {
+          box?: number
+          correct_count?: number
+          created_at?: string
+          due_at?: string
+          id?: string
+          last_reviewed_at?: string | null
+          material_id?: string
+          qhash?: string
+          question?: Json
+          updated_at?: string
+          user_id?: string
+          wrong_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_cards_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           activity_type: string
