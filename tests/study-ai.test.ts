@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import {
   AiParseError,
   COMBINED_PROMPT,
+  DEPTHS,
   QUIZ_PROMPT,
   parseCombined,
   parseOutline,
   parseQuiz,
   readStoredQuiz,
+  thinkingFor,
 } from "../src/lib/study-ai.ts";
 
 test("poin materi: JSON polos, dibungkus code fence, dan halaman opsional", () => {
@@ -115,4 +117,12 @@ test("prompt meminta soal banyak (15 sampai 30), bukan 6 sampai 8", () => {
     assert.match(p, /minimal 15 dan maksimal 30 soal/);
     assert.doesNotMatch(p, /6 sampai 8 soal/);
   }
+});
+
+test("pilihan ketelitian: cepat=low, seimbang=medium, teliti=high, dan bawaan medium", () => {
+  assert.equal(thinkingFor("cepat"), "low");
+  assert.equal(thinkingFor("seimbang"), "medium");
+  assert.equal(thinkingFor("teliti"), "high");
+  assert.equal(thinkingFor(undefined), "medium");
+  assert.equal(DEPTHS.length, 3);
 });

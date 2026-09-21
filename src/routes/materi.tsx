@@ -3,6 +3,7 @@ import {
   BookOpen,
   Check,
   FileText,
+  History,
   Pencil,
   Presentation,
   Search,
@@ -13,6 +14,9 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MaterialDialog } from "@/components/material-dialog";
+import { QuizHistoryDialog } from "@/components/quiz-history-dialog";
+import { useQuizSummaries } from "@/hooks/use-quiz-history";
+import type { Summary } from "@/lib/quiz-history";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useCourses, useInvalidateData, useMaterials } from "@/hooks/use-schedules";
 import { useSession } from "@/hooks/use-session";
@@ -55,6 +59,8 @@ function MateriPage() {
   const invalidate = useInvalidateData();
   const courses = useCourses(userId);
   const materials = useMaterials(userId);
+  const summaries = useQuizSummaries(userId);
+  const [historyFor, setHistoryFor] = useState<Material | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [courseId, setCourseId] = useState("");
@@ -312,6 +318,8 @@ function MateriPage() {
                 onToggle={(m) => void toggleReview(m)}
                 onEdit={setEditing}
                 onDelete={(m) => void remove(m)}
+                summaries={summaries.data}
+                onHistory={setHistoryFor}
               />
             ))}
           </div>
@@ -325,6 +333,7 @@ function MateriPage() {
             <p className="text-sm text-muted-foreground">Tidak ada materi yang cocok.</p>
           )}
 
+          <QuizHistoryDialog material={historyFor} onClose={() => setHistoryFor(null)} />
           <MaterialDialog
             material={editing}
             courses={courseList}
@@ -347,6 +356,8 @@ function CourseSection({
   onToggle,
   onEdit,
   onDelete,
+  summaries,
+  onHistory,
 }: {
   course: Course | null;
   items: Material[];
@@ -354,6 +365,8 @@ function CourseSection({
   onToggle: (m: Material) => void;
   onEdit: (m: Material) => void;
   onDelete: (m: Material) => void;
+  summaries: Map<string, Summary> | undefined;
+  onHistory: (m: Material) => void;
 }) {
   const pending = items.filter((m) => !isReviewed(m)).length;
   return (
@@ -392,6 +405,8 @@ function CourseSection({
                       onToggle={() => onToggle(m)}
                       onEdit={() => onEdit(m)}
                       onDelete={() => onDelete(m)}
+                      summary={summaries?.get(m.id)}
+                      onHistory={() => onHistory(m)}
                     />
                   ))}
                 </ul>
@@ -410,12 +425,16 @@ function MaterialRow({
   onToggle,
   onEdit,
   onDelete,
+  summary,
+  onHistory,
 }: {
   m: Material;
   onOpen: () => void;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  summary: Summary | undefined;
+  onHistory: () => void;
 }) {
   const reviewed = isReviewed(m);
   const [confirming, setConfirming] = useState(false);
@@ -439,6 +458,13 @@ function MaterialRow({
         <p className="text-xs text-muted-foreground">
           {m.exam_scope.toUpperCase()}, {fmtSize(m.size_bytes)}
         </p>
+        {summary && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Latihan: {summary.last !== null ? `terakhir ${summary.last}%` : `${summary.count} kali`}
+            {summary.best !== null && summary.count > 1 ? `, terbaik ${summary.best}%` : ""}
+            {summary.last !== null ? `, ${summary.count} kali` : ""}
+          </p>
+        )}
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1">
         {confirming ? (
@@ -463,6 +489,18 @@ function MaterialRow({
               {reviewed ? <Check /> : <span className="h-2 w-2 rounded-full bg-destructive" />}
               {reviewed ? "Sudah" : "Perlu review"}
             </Button>
+            {summary && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={onHistory}
+                aria-label={`Riwayat latihan ${m.name}`}
+                title="Riwayat latihan"
+              >
+                <History />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"

@@ -260,6 +260,50 @@ export type Database = {
           },
         ]
       }
+      quiz_attempts: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          material_id: string
+          mode: string
+          score: number
+          total: number
+          user_id: string
+          wrong: Json
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          material_id: string
+          mode: string
+          score: number
+          total: number
+          user_id: string
+          wrong?: Json
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          material_id?: string
+          mode?: string
+          score?: number
+          total?: number
+          user_id?: string
+          wrong?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           activity_type: string

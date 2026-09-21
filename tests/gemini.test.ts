@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { GeminiError, askGemini, toBase64 } from "../src/lib/gemini.server.ts";
 
 process.env["GEMINI_RETRY_MS"] = "1";
+process.env["GEMINI_FALLBACK_MODELS"] = "";
 const pdf = new TextEncoder().encode("%PDF-1.4 contoh");
 const ok = (text: string) =>
   new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }));
@@ -60,7 +61,7 @@ test("server sibuk (503) diulang sekali lalu berhasil; kalau tetap gagal, pesan 
   assert.equal(await call(), "halo");
   assert.equal(n, 2);
   globalThis.fetch = (async () => err(503, "overloaded")) as typeof fetch;
-  await assert.rejects(call(), /sedang sibuk/);
+  await assert.rejects(call(), /sedang sibuk \(503: overloaded\)/);
 });
 
 test("diblokir, kosong, tanpa kunci, dan PDF terlalu besar", async () => {
@@ -83,4 +84,99 @@ test("diblokir, kosong, tanpa kunci, dan PDF terlalu besar", async () => {
 test("base64 benar untuk data besar (lebih dari 32 KB)", () => {
   const big = new Uint8Array(100_000).map((_, i) => i % 251);
   assert.equal(toBase64(big), Buffer.from(big).toString("base64"));
+});
+
+test("model utama sibuk terus: pindah ke model cadangan, dan berhasil", async () => {
+  process.env["GEMINI_API_KEY"] = "k";
+  process.env["GEMINI_MODEL"] = "gemini-3.7-flash";
+  process.env["GEMINI_FALLBACK_MODELS"] = "model-cadangan";
+  const urls: string[] = [];
+  globalThis.fetch = (async (url: string) => {
+    urls.push(url);
+    return url.includes("model-cadangan")
+      ? ok('{"ok":true}')
+      : err(503, "The model is overloaded. Please try again later.");
+  }) as typeof fetch;
+  assert.equal(await call(), '{"ok":true}');
+  assert.equal(urls.filter((u) => u.includes("gemini-3.7-flash")).length, 3); // 1 percobaan + 2 ulangan
+  assert.match(urls.at(-1)!, /model-cadangan/);
+});
+
+test("batas gratis (429) di model utama: model cadangan dicoba; kalau semua gagal, kesalahan model utama yang dilaporkan", async () => {
+  process.env["GEMINI_API_KEY"] = "k";
+  process.env["GEMINI_MODEL"] = "gemini-3.7-flash";
+  process.env["GEMINI_FALLBACK_MODELS"] = "cadangan-1,cadangan-2";
+  const seen: string[] = [];
+  globalThis.fetch = (async (url: string) => {
+    seen.push(url.match(/models\/([^:]+):/)![1]!);
+    return url.includes("cadangan-2")
+      ? ok("dari cadangan 2")
+      : url.includes("cadangan-1")
+        ? err(404, "not found")
+        : err(429, "quota");
+  }) as typeof fetch;
+  assert.equal(await call(), "dari cadangan 2");
+  assert.deepEqual(seen, ["gemini-3.7-flash", "cadangan-1", "cadangan-2"]);
+
+  globalThis.fetch = (async () => err(429, "quota")) as typeof fetch;
+  await assert.rejects(call(), /Batas gratis Gemini/);
+});
+
+test("kunci ditolak (403) tidak memicu model cadangan", async () => {
+  process.env["GEMINI_API_KEY"] = "k";
+  process.env["GEMINI_MODEL"] = "gemini-3.7-flash";
+  process.env["GEMINI_FALLBACK_MODELS"] = "cadangan";
+  let n = 0;
+  globalThis.fetch = (async () => (n++, err(403, "denied"))) as typeof fetch;
+  await assert.rejects(call(), /Kunci Gemini ditolak/);
+  assert.equal(n, 1);
+});
+
+test("thinking level dikirim untuk model seri 3 (bawaan medium, bisa dipilih), dan dicoba ulang tanpa itu kalau ditolak", async () => {
+  process.env["GEMINI_API_KEY"] = "k";
+  process.env["GEMINI_MODEL"] = "gemini-3.7-flash";
+  process.env["GEMINI_FALLBACK_MODELS"] = "";
+  const bodies: any[] = [];
+  globalThis.fetch = (async (_u: string, init: RequestInit) => {
+    const b = JSON.parse(init.body as string);
+    bodies.push(b);
+    return b.generationConfig.thinkingConfig
+      ? err(400, "Thinking level is not supported for this model")
+      : ok("{}");
+  }) as typeof fetch;
+  assert.equal(await call(), "{}");
+  assert.equal(bodies[0].generationConfig.thinkingConfig.thinkingLevel, "medium");
+  assert.equal(bodies[1].generationConfig.thinkingConfig, undefined);
+
+  // model non-seri-3 tidak mengirim thinking sama sekali
+  process.env["GEMINI_MODEL"] = "gemini-2.5-flash";
+  bodies.length = 0;
+  await call();
+  assert.equal(bodies[0].generationConfig.thinkingConfig, undefined);
+  process.env["GEMINI_MODEL"] = "gemini-3.7-flash";
+});
+
+test("pesan asli Google ikut ditampilkan untuk error tak dikenal", async () => {
+  process.env["GEMINI_API_KEY"] = "k";
+  process.env["GEMINI_FALLBACK_MODELS"] = "";
+  globalThis.fetch = (async () =>
+    err(400, "Request payload size exceeds the limit")) as typeof fetch;
+  await assert.rejects(
+    call(),
+    /Gemini menolak permintaan \(400\): Request payload size exceeds the limit/,
+  );
+});
+
+test("tingkat berpikir yang dipilih pengguna diteruskan ke Gemini", async () => {
+  process.env["GEMINI_API_KEY"] = "k";
+  process.env["GEMINI_MODEL"] = "gemini-3.7-flash";
+  process.env["GEMINI_FALLBACK_MODELS"] = "";
+  const levels: string[] = [];
+  globalThis.fetch = (async (_u: string, init: RequestInit) => {
+    levels.push(JSON.parse(init.body as string).generationConfig.thinkingConfig?.thinkingLevel);
+    return ok("{}");
+  }) as typeof fetch;
+  for (const thinking of ["low", "medium", "high"] as const)
+    await askGemini({ pdf, prompt: "P", system: "S", thinking });
+  assert.deepEqual(levels, ["low", "medium", "high"]);
 });

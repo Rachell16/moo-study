@@ -5,7 +5,10 @@ import { Check, RotateCcw, Shuffle, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useQuizAttempts } from "@/hooks/use-quiz-history";
 import { useInvalidateData } from "@/hooks/use-schedules";
+import { useSession } from "@/hooks/use-session";
+import { QuizHistory } from "@/components/quiz-history";
 import { canUseAi, type AiInfo, type MaterialPoint } from "@/hooks/use-study";
 import { supabase } from "@/integrations/supabase/client";
 import { setReviewed } from "@/lib/materials";
@@ -321,27 +324,37 @@ const makeItems = (all: QuizQuestion[], indexes: number[]): Item[] =>
     order: shuffle(all[source]!.options.map((_, i) => i)),
   }));
 
+type Mode = "acak10" | "acak20" | "semua" | "ulang_salah";
+type Wrong = { source: number; picked: string }; // soal yang salah dan teks jawaban yang dipilih
+
 export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | undefined }) {
   const qc = useQueryClient();
+  const { userId } = useSession();
   const invalidate = useInvalidateData();
   const generate = useServerFn(generateQuiz);
+  const attempts = useQuizAttempts(material.id);
   const [depth, setDepth] = useDepth();
   const questions = useMemo(() => readStoredQuiz(material.quiz), [material.quiz]);
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<number | null>(null); // indeks opsi asli yang dipilih
-  const [wrong, setWrong] = useState<number[]>([]); // indeks soal (di daftar lengkap) yang salah
+  const [wrong, setWrong] = useState<Wrong[]>([]);
   const [finished, setFinished] = useState(false);
-  const running = items.length > 0 && !finished;
+  const [mode, setMode] = useState<Mode>("semua");
+  const [saved, setSaved] = useState<"menyimpan" | "tersimpan" | "gagal" | null>(null);
+  const runStart = useRef(0);
   const ready = canUseAi(ai);
 
-  const start = (indexes: number[]) => {
+  const start = (indexes: number[], m: Mode) => {
     setItems(makeItems(questions, indexes));
+    setMode(m);
     setIndex(0);
     setPicked(null);
     setWrong([]);
     setFinished(false);
+    setSaved(null);
+    runStart.current = Date.now();
   };
   const all = questions.map((_, i) => i);
   const backToMenu = () => {
@@ -354,6 +367,41 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
     setItems([]);
     setFinished(false);
   }, [questions]);
+
+  // Simpan hasil ke riwayat. Soal yang salah disimpan lengkap dengan jawaban benarnya, supaya tetap terbaca walau soal dibuat ulang.
+  const finish = async (finalWrong: Wrong[]) => {
+    setFinished(true);
+    if (!userId) return;
+    setSaved("menyimpan");
+    const total = items.length;
+    const { error } = await supabase.from("quiz_attempts").insert({
+      user_id: userId,
+      material_id: material.id,
+      score: total - finalWrong.length,
+      total,
+      mode,
+      duration_seconds: Math.max(Math.round((Date.now() - runStart.current) / 1000), 0),
+      wrong: finalWrong.map((w) => {
+        const q = questions[w.source]!;
+        return {
+          question: q.question,
+          answer: q.options[q.answerIndex] ?? "",
+          picked: w.picked,
+          explanation: q.explanation,
+        };
+      }),
+    });
+    if (error) {
+      setSaved("gagal");
+      toast.error(`Hasil belum tersimpan di riwayat: ${error.message}`);
+      return;
+    }
+    setSaved("tersimpan");
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["quiz-attempts"] }),
+      qc.invalidateQueries({ queryKey: ["quiz-summary"] }),
+    ]);
+  };
 
   const make = async () => {
     setBusy(true);
@@ -393,20 +441,34 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
       </div>
     );
 
+  const history = (
+    <section className="grid gap-3 border-t border-border pt-4" aria-label="Riwayat latihan">
+      <h3 className="font-display text-xl font-bold">Riwayat latihan</h3>
+      {attempts.isError ? (
+        <p className="text-sm text-destructive">Gagal memuat riwayat: {attempts.error.message}</p>
+      ) : (
+        <QuizHistory attempts={attempts.data ?? []} />
+      )}
+    </section>
+  );
+
   if (questions.length === 0) {
     return (
-      <div className="grid gap-3">
-        <p className="text-sm text-muted-foreground">
-          Belum ada soal. Tombol <strong>Siapkan materi dengan AI</strong> di tab Poin materi
-          membuat poin dan soal sekaligus. Kamu juga bisa membuat soalnya saja di sini.
-        </p>
-        {material.file_type !== "pdf" ? (
-          <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-            AI hanya bisa membaca PDF.
+      <div className="grid gap-4">
+        <div className="grid gap-3">
+          <p className="text-sm text-muted-foreground">
+            Belum ada soal. Tombol <strong>Siapkan materi dengan AI</strong> di tab Poin materi
+            membuat poin dan soal sekaligus. Kamu juga bisa membuat soalnya saja di sini.
           </p>
-        ) : (
-          generator("Buat soal latihan")
-        )}
+          {material.file_type !== "pdf" ? (
+            <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+              AI hanya bisa membaca PDF.
+            </p>
+          ) : (
+            generator("Buat soal latihan")
+          )}
+        </div>
+        {(attempts.data?.length ?? 0) > 0 && history}
       </div>
     );
   }
@@ -415,22 +477,30 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
   if (items.length === 0) {
     const sizes = [10, 20].filter((n) => n < questions.length);
     return (
-      <div className="grid gap-4">
-        <div>
-          <p className="font-display text-3xl font-bold">{questions.length} soal</p>
-          <p className="text-sm text-muted-foreground">
-            Urutan soal dan pilihan jawabannya diacak tiap kali kamu mulai.
-          </p>
+      <div className="grid gap-5">
+        <div className="grid gap-4">
+          <div>
+            <p className="font-display text-3xl font-bold">{questions.length} soal</p>
+            <p className="text-sm text-muted-foreground">
+              Urutan soal dan pilihan jawabannya diacak tiap kali kamu mulai. Hasil tiap latihan
+              tersimpan di riwayat.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {sizes.map((n) => (
+              <Button
+                key={n}
+                variant="outline"
+                onClick={() => start(shuffle(all).slice(0, n), n === 10 ? "acak10" : "acak20")}
+              >
+                <Shuffle /> {n} soal acak
+              </Button>
+            ))}
+            <Button onClick={() => start(all, "semua")}>Semua {questions.length} soal</Button>
+          </div>
+          {material.file_type === "pdf" && generator("Buat soal baru")}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {sizes.map((n) => (
-            <Button key={n} variant="outline" onClick={() => start(shuffle(all).slice(0, n))}>
-              <Shuffle /> {n} soal acak
-            </Button>
-          ))}
-          <Button onClick={() => start(all)}>Semua {questions.length} soal</Button>
-        </div>
-        {material.file_type === "pdf" && generator("Buat soal baru")}
+        {history}
       </div>
     );
   }
@@ -452,14 +522,32 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
               ? "Lumayan. Ulas poin yang masih ragu, lalu coba lagi."
               : "Baca lagi poin-poin materinya, lalu ulangi latihan."}
         </p>
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {saved === "menyimpan"
+            ? "Menyimpan ke riwayat…"
+            : saved === "tersimpan"
+              ? "Tersimpan di riwayat."
+              : saved === "gagal"
+                ? "Belum tersimpan di riwayat."
+                : !userId
+                  ? "Masuk supaya hasilnya tersimpan di riwayat."
+                  : ""}
+        </p>
         <div className="flex flex-wrap justify-center gap-2">
           {wrong.length > 0 && (
-            <Button onClick={() => start(wrong)}>
+            <Button
+              onClick={() =>
+                start(
+                  wrong.map((w) => w.source),
+                  "ulang_salah",
+                )
+              }
+            >
               <RotateCcw /> Ulangi yang salah ({wrong.length})
             </Button>
           )}
           <Button variant="outline" onClick={backToMenu}>
-            Kembali ke menu soal
+            Lihat riwayat dan menu soal
           </Button>
         </div>
       </div>
@@ -476,7 +564,12 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
         <p className="text-xs font-bold uppercase text-muted-foreground">
           Soal {index + 1} dari {items.length}
         </p>
-        <Button size="sm" variant="ghost" onClick={backToMenu}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={backToMenu}
+          title="Latihan yang belum selesai tidak dicatat di riwayat"
+        >
           Selesai
         </Button>
       </div>
@@ -501,7 +594,12 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
               disabled={answered}
               onClick={() => {
                 setPicked(optIndex);
-                if (!right) setWrong((w) => (w.includes(item.source) ? w : [...w, item.source]));
+                if (!right)
+                  setWrong((w) =>
+                    w.some((x) => x.source === item.source)
+                      ? w
+                      : [...w, { source: item.source, picked: item.q.options[optIndex] ?? "" }],
+                  );
               }}
               className={`flex items-start gap-3 rounded-md border px-3 py-2.5 text-left text-sm ${state}`}
             >
@@ -527,7 +625,7 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
         <Button
           className="w-fit"
           onClick={() => {
-            if (index + 1 >= items.length) setFinished(true);
+            if (index + 1 >= items.length) void finish(wrong);
             else {
               setIndex(index + 1);
               setPicked(null);

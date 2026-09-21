@@ -5,6 +5,7 @@ import { PlanCard } from "@/components/plan-card";
 import { AiQuotaLine } from "@/components/room-panels";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useCourses, useMaterials } from "@/hooks/use-schedules";
+import { useQuizSummaries } from "@/hooks/use-quiz-history";
 import { useAiStatus, usePointProgress } from "@/hooks/use-study";
 import { useSession } from "@/hooks/use-session";
 import { cleanMaterialName } from "@/lib/study-plan";
@@ -32,6 +33,7 @@ function BelajarPage() {
   const courses = useCourses(userId);
   const materials = useMaterials(userId);
   const progress = usePointProgress(userId);
+  const summaries = useQuizSummaries(userId);
   const ai = useAiStatus(userId);
 
   const all = materials.data ?? [];
@@ -79,6 +81,14 @@ function BelajarPage() {
             </div>
           ) : (
             <p className="mt-2 text-xs text-muted-foreground">Belum dipecah jadi poin</p>
+          )}
+          {summaries.data?.get(m.id) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Latihan:{" "}
+              {summaries.data.get(m.id)!.last !== null
+                ? `terakhir ${summaries.data.get(m.id)!.last}%`
+                : `${summaries.data.get(m.id)!.count} kali`}
+            </p>
           )}
         </Link>
       </li>
