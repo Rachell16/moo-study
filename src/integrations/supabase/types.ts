@@ -133,10 +133,14 @@ export type Database = {
           id: string
           material_type: string
           name: string
+          outline_generated_at: string | null
+          quiz: Json | null
+          quiz_generated_at: string | null
           reviewed_at: string | null
           semester: number
           size_bytes: number
           storage_path: string
+          study_notes: string
           updated_at: string
           user_id: string
         }
@@ -148,10 +152,14 @@ export type Database = {
           id?: string
           material_type?: string
           name: string
+          outline_generated_at?: string | null
+          quiz?: Json | null
+          quiz_generated_at?: string | null
           reviewed_at?: string | null
           semester?: number
           size_bytes?: number
           storage_path: string
+          study_notes?: string
           updated_at?: string
           user_id: string
         }
@@ -163,10 +171,14 @@ export type Database = {
           id?: string
           material_type?: string
           name?: string
+          outline_generated_at?: string | null
+          quiz?: Json | null
+          quiz_generated_at?: string | null
           reviewed_at?: string | null
           semester?: number
           size_bytes?: number
           storage_path?: string
+          study_notes?: string
           updated_at?: string
           user_id?: string
         }
@@ -176,6 +188,53 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_points: {
+        Row: {
+          created_at: string
+          heading: string
+          id: string
+          material_id: string
+          page: number | null
+          position: number
+          summary: string
+          understood: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          heading: string
+          id?: string
+          material_id: string
+          page?: number | null
+          position: number
+          summary: string
+          understood?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          heading?: string
+          id?: string
+          material_id?: string
+          page?: number | null
+          position?: number
+          summary?: string
+          understood?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_points_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
             referencedColumns: ["id"]
           },
         ]

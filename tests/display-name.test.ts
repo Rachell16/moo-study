@@ -21,5 +21,7 @@ test("pilihan sendiri menang, lalu nama Google (nama depan), lalu awalan email",
   );
   assert.equal(displayNameOf({ email: "budi.santoso@petani.id" }), "Budi");
   assert.equal(displayNameOf({ email: "12345@x.id" }), "");
+  assert.equal(displayNameOf({ email: "r.tobing@x.id" }), ""); // terlalu pendek: tidak dipakai
+  assert.equal(displayNameOf({ email: "a@b.c", user_metadata: { display_name: "R" } }), "R"); // pilihan sendiri tetap dihormati
   assert.equal(displayNameOf(null), "");
 });

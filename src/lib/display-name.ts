@@ -24,5 +24,5 @@ export function displayNameOf(user: UserLike): string {
       .replace(/\d+/g, " ")
       .trim()
       .split(/\s+/)[0] ?? "";
-  return cap(word);
+  return word.length >= 3 ? cap(word) : ""; // "r.tobing@..." bukan nama yang layak untuk sapaan
 }

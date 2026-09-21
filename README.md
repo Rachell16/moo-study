@@ -10,6 +10,7 @@ TanStack Start (React) + Supabase (Postgres, Auth, Storage). Tidak lagi bergantu
 - **Tugas**: tempel daftar tugas, nama, tanggal, dan jam terbaca otomatis. Tanda ‼️ berarti penting. Singkatan seperti SMA, ML, CV dihubungkan ke mata kuliahnya. Tiap tugas jadi blok 30 menit di Jadwal yang berakhir di deadline.
 - **Ujian**: hitung mundur UTS/UAS per mata kuliah, plus progres materi yang sudah dan belum di-review.
 - **Timer**: preset Pomodoro (25/5, 50/10, 90/20) atau angka sendiri, istirahat panjang tiap beberapa sesi, mulai otomatis, dan bunyi saat selesai. Sesi fokus yang selesai tercatat, jadi streak dan ringkasan "sesi hari ini" nyata. Streak kembali ke 0 kalau ada hari yang terlewat.
+- **Ruang belajar** (`/belajar`): rencana "ayo belajar ini hari ini" yang disusun dari jadwal kuliah, deadline tugas, jadwal ujian, dan materi yang belum di-review, lalu ditempatkan di waktu kosong (tombol Jadwalkan memasukkannya ke kalender). Per materi ada ruang belajar: PDF di kiri, di kanan poin-poin materi (dibuat AI) dengan tanda "sudah paham", latihan soal pilihan ganda, dan catatan.
 - **Materi**: dikelompokkan per mata kuliah, lalu per Kuliah dan Praktikum. Tiap file ditandai untuk UTS atau UAS dan punya status review.
 - **Google Calendar**: agenda, deadline tugas, dan ujian ikut tersinkron. Ada pengingat otomatis (tugas H-1 dan 3 jam, ujian H-3 dan H-1).
 
@@ -85,3 +86,17 @@ tests/                 tes parser
 - Konfigurasi Vite, login Google, dan penyimpanan sesi sudah dibuat mandiri. File khusus Lovable dihapus.
 - Data di database Lovable Cloud tidak ikut pindah. Kalau ada yang perlu dibawa, ekspor dari tabelnya dan impor ke project Supabase barumu.
 - `src/integrations/supabase/types.ts` ditulis manual mengikuti migrasi. Kalau skema berubah, buat ulang dengan `supabase gen types typescript --project-id XXXX`.
+
+## Fitur AI (ruang belajar)
+
+Rencana belajar harian berjalan tanpa AI. Memecah materi jadi poin dan membuat soal latihan memakai **Google Gemini** lewat kunci gratis.
+
+1. Buka https://aistudio.google.com, login, klik **Get API key** lalu **Create API key** (tanpa kartu kredit).
+2. Simpan sebagai `GEMINI_API_KEY` di `.env` (lokal) dan di Vercel (Settings, Environment Variables), lalu Redeploy.
+3. Opsional: `GEMINI_MODEL` untuk mengganti model. Bawaannya `gemini-3.7-flash`. Pakai model Flash yang termasuk paket gratis.
+
+Catatan:
+- Hanya PDF yang bisa dibaca AI (maksimal sekitar 14 MB). Slide PPT diubah jadi PDF dulu.
+- Di paket gratis, Google boleh memakai isi yang dikirim untuk meningkatkan produknya, jadi jangan dipakai untuk materi rahasia.
+- Kalau muncul pesan batas gratis tercapai, tunggu beberapa menit lalu coba lagi.
+- Migrasi `20260921030000_ruang_belajar.sql` membuat tabel `material_points` serta kolom soal dan catatan di `materials`.

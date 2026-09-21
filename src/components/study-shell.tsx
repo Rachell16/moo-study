@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   Menu,
+  Sparkles,
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -19,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
   { to: "/", label: "Beranda", icon: Home },
+  { to: "/belajar", label: "Belajar", icon: Sparkles },
   { to: "/jadwal", label: "Jadwal", icon: CalendarDays },
   { to: "/tugas", label: "Tugas", icon: ListChecks },
   { to: "/ujian", label: "Ujian", icon: GraduationCap },

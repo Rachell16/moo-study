@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { NameDialog } from "@/components/name-dialog";
+import { PlanCard } from "@/components/plan-card";
 import cowMascot from "@/assets/cow-mascot.png";
 import {
   useCourses,
@@ -115,7 +116,7 @@ function Index() {
 
   return (
     <StudyShell
-      title={`${now ? greetingFor(now.getHours()) : "Halo"}, ${userName || "kamu"}!`}
+      title={`${now ? greetingFor(now.getHours()) : "Halo"}${userName ? `, ${userName}` : ""}!`}
       kicker={
         now
           ? now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })
@@ -155,7 +156,9 @@ function Index() {
         />
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[1.35fr_.8fr]">
+      <PlanCard userId={userId} limit={3} className="mb-5" />
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,.8fr)]">
         <PaperCard>
           <div className="mb-5 flex items-center justify-between">
             <div>
@@ -203,7 +206,7 @@ function Index() {
                 : "Masuk untuk melihat tugas dan ujianmu."}
             </p>
           ) : (
-            <ul className="mt-3 grid gap-3">
+            <ul className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-3">
               {upcoming.map((u) => {
                 const cd = countdownLabel(u.at, now ?? new Date());
                 return (
@@ -230,7 +233,7 @@ function Index() {
         </PaperCard>
       </div>
 
-      <div className="mt-5 grid gap-5 md:grid-cols-3">
+      <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-3">
         <PaperCard className="md:col-span-2">
           <div className="flex items-center justify-between">
             <div>
@@ -243,7 +246,7 @@ function Index() {
               </Link>
             </Button>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
             {recent.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {userId
