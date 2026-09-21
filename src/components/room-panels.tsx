@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { setReviewed } from "@/lib/materials";
 import { fmtTime, type Material } from "@/lib/schedule-utils";
 import { generateQuiz, prepareMaterial } from "@/lib/study.functions";
-import { readStoredQuiz, type QuizQuestion } from "@/lib/study-ai";
+import { DEPTHS, readStoredQuiz, type Depth, type QuizQuestion } from "@/lib/study-ai";
 
 const PRIVACY =
   "Isi materi dikirim ke Google Gemini (paket gratis). Google boleh memakai isinya untuk meningkatkan produknya, jadi jangan dipakai untuk materi rahasia.";
@@ -45,6 +45,52 @@ export function AiQuotaLine({ ai }: { ai: AiInfo | undefined }) {
   );
 }
 
+// ------------------------------------------------------------ ketelitian AI
+const DEPTH_KEY = "moo-ai-depth";
+
+function useDepth(): [Depth, (d: Depth) => void] {
+  const [depth, setDepth] = useState<Depth>("seimbang");
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(DEPTH_KEY);
+      if (v === "cepat" || v === "seimbang" || v === "teliti") setDepth(v);
+    } catch {
+      /* penyimpanan diblokir: pilihan berlaku selama halaman terbuka */
+    }
+  }, []);
+  const set = (d: Depth) => {
+    setDepth(d);
+    try {
+      window.localStorage.setItem(DEPTH_KEY, d);
+    } catch {
+      /* abaikan */
+    }
+  };
+  return [depth, set];
+}
+
+function DepthPicker({ value, onChange }: { value: Depth; onChange: (d: Depth) => void }) {
+  return (
+    <div className="grid gap-1.5">
+      <p className="text-xs font-semibold">Seberapa teliti AI-nya?</p>
+      <div className="flex flex-wrap gap-1" role="group" aria-label="Ketelitian AI">
+        {DEPTHS.map((d) => (
+          <Button
+            key={d.value}
+            size="sm"
+            variant={value === d.value ? "default" : "outline"}
+            aria-pressed={value === d.value}
+            onClick={() => onChange(d.value)}
+          >
+            {d.label}
+          </Button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{DEPTHS.find((d) => d.value === value)?.hint}</p>
+    </div>
+  );
+}
+
 // ------------------------------------------------------------ poin materi
 export function PointsPanel({
   material,
@@ -60,6 +106,7 @@ export function PointsPanel({
   const qc = useQueryClient();
   const invalidate = useInvalidateData();
   const prepare = useServerFn(prepareMaterial);
+  const [depth, setDepth] = useDepth();
   const [busy, setBusy] = useState(false);
   const [confirmRedo, setConfirmRedo] = useState(false);
 
@@ -80,7 +127,7 @@ export function PointsPanel({
     setBusy(true);
     setConfirmRedo(false);
     try {
-      const r = await prepare({ data: { materialId: material.id, force } });
+      const r = await prepare({ data: { materialId: material.id, force, depth } });
       toast.success(`${r.points} poin dan ${r.questions} soal latihan siap.`);
       await refresh();
     } catch (e) {
@@ -126,6 +173,7 @@ export function PointsPanel({
           <AiNotReady />
         ) : (
           <>
+            <DepthPicker value={depth} onChange={setDepth} />
             <Button className="w-fit" disabled={busy || !ready} onClick={() => void run(false)}>
               <Sparkles /> {busy ? "Membaca materi…" : "Siapkan materi dengan AI"}
             </Button>
@@ -217,6 +265,7 @@ export function PointsPanel({
 
       {canAi && ai?.configured && (
         <div className="grid gap-2">
+          {confirmRedo && <DepthPicker value={depth} onChange={setDepth} />}
           <div className="flex flex-wrap items-center gap-2 text-sm">
             {confirmRedo ? (
               <>
@@ -276,6 +325,7 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
   const qc = useQueryClient();
   const invalidate = useInvalidateData();
   const generate = useServerFn(generateQuiz);
+  const [depth, setDepth] = useDepth();
   const questions = useMemo(() => readStoredQuiz(material.quiz), [material.quiz]);
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
@@ -308,7 +358,7 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
   const make = async () => {
     setBusy(true);
     try {
-      const r = await generate({ data: { materialId: material.id } });
+      const r = await generate({ data: { materialId: material.id, depth } });
       toast.success(`${r.count} soal baru siap.`);
       await Promise.all([invalidate(), qc.invalidateQueries({ queryKey: ["ai-status"] })]);
     } catch (e) {
@@ -324,6 +374,7 @@ export function QuizPanel({ material, ai }: { material: Material; ai: AiInfo | u
       <AiNotReady />
     ) : (
       <div className="grid gap-2">
+        <DepthPicker value={depth} onChange={setDepth} />
         <Button
           className="w-fit"
           variant={questions.length ? "outline" : "default"}

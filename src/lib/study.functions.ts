@@ -4,7 +4,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // File *.functions.ts ikut ke bundle browser, jadi modul server dimuat lewat import() di dalam handler.
 
-const idInput = z.object({ materialId: z.string().uuid(), force: z.boolean().optional() });
+const idInput = z.object({
+  materialId: z.string().uuid(),
+  force: z.boolean().optional(),
+  depth: z.enum(["cepat", "seimbang", "teliti"]).optional(),
+});
 
 // Status AI untuk tampilan: apakah kunci sudah dipasang dan berapa sisa jatah hari ini.
 export const getAiStatus = createServerFn({ method: "GET" })
@@ -78,7 +82,8 @@ export const prepareMaterial = createServerFn({ method: "POST" })
   .validator(idInput)
   .handler(async ({ context, data }) => {
     const { askGemini } = await import("./gemini.server");
-    const { COMBINED_PROMPT, SYSTEM_PROMPT, parseCombined } = await import("./study-ai");
+    const { COMBINED_PROMPT, SYSTEM_PROMPT, parseCombined, thinkingFor } =
+      await import("./study-ai");
     const { supabase, userId } = context;
 
     const { count } = await supabase
@@ -89,7 +94,14 @@ export const prepareMaterial = createServerFn({ method: "POST" })
 
     const pdf = await loadPdf(supabase, data.materialId);
     const parsed = await withQuota(userId, "materi", async () =>
-      parseCombined(await askGemini({ pdf, prompt: COMBINED_PROMPT, system: SYSTEM_PROMPT })),
+      parseCombined(
+        await askGemini({
+          pdf,
+          prompt: COMBINED_PROMPT,
+          system: SYSTEM_PROMPT,
+          thinking: thinkingFor(data.depth),
+        }),
+      ),
     );
 
     await supabase.from("material_points").delete().eq("material_id", data.materialId);
@@ -122,12 +134,19 @@ export const generateQuiz = createServerFn({ method: "POST" })
   .validator(idInput)
   .handler(async ({ context, data }) => {
     const { askGemini } = await import("./gemini.server");
-    const { QUIZ_PROMPT, SYSTEM_PROMPT, parseQuiz } = await import("./study-ai");
+    const { QUIZ_PROMPT, SYSTEM_PROMPT, parseQuiz, thinkingFor } = await import("./study-ai");
     const { supabase, userId } = context;
 
     const pdf = await loadPdf(supabase, data.materialId);
     const questions = await withQuota(userId, "soal", async () =>
-      parseQuiz(await askGemini({ pdf, prompt: QUIZ_PROMPT, system: SYSTEM_PROMPT })),
+      parseQuiz(
+        await askGemini({
+          pdf,
+          prompt: QUIZ_PROMPT,
+          system: SYSTEM_PROMPT,
+          thinking: thinkingFor(data.depth),
+        }),
+      ),
     );
     const { error } = await supabase
       .from("materials")

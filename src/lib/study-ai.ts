@@ -135,3 +135,33 @@ export function parseCombined(text: string): {
   }
   return { points, questions };
 }
+
+// Seberapa dalam AI "berpikir" sebelum menjawab. Makin teliti makin bagus untuk materi rumit, tapi makin lama dan makin berat.
+export type Depth = "cepat" | "seimbang" | "teliti";
+export const DEPTHS: {
+  value: Depth;
+  label: string;
+  hint: string;
+  level: "low" | "medium" | "high";
+}[] = [
+  {
+    value: "cepat",
+    label: "Cepat",
+    hint: "Paling cepat dan ringan. Cukup untuk slide yang lurus dan ringkas.",
+    level: "low",
+  },
+  {
+    value: "seimbang",
+    label: "Seimbang",
+    hint: "Pilihan bawaan: cukup teliti dan tidak terlalu lama.",
+    level: "medium",
+  },
+  {
+    value: "teliti",
+    label: "Teliti",
+    hint: "Paling dalam, cocok untuk materi rumit atau berisi rumus. Bisa 1 sampai 2 menit.",
+    level: "high",
+  },
+];
+export const thinkingFor = (depth?: Depth) =>
+  DEPTHS.find((d) => d.value === depth)?.level ?? "medium";

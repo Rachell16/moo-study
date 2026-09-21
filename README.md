@@ -99,6 +99,8 @@ Catatan:
 - Hanya PDF yang bisa dibaca AI (maksimal sekitar 14 MB). Slide PPT diubah jadi PDF dulu.
 - Di paket gratis, Google boleh memakai isi yang dikirim untuk meningkatkan produknya, jadi jangan dipakai untuk materi rahasia.
 - Kalau muncul pesan batas gratis tercapai, tunggu beberapa menit lalu coba lagi.
+- Kalau model utama sibuk (error 5xx) atau kena batas, aplikasi mengulang beberapa kali lalu mencoba model cadangan (`GEMINI_FALLBACK_MODELS`, bawaan `gemini-flash-lite-latest`). Pesan errornya menyertakan pesan asli dari Google supaya penyebabnya bisa dilacak.
+- Di ruang belajar ada pilihan **Cepat / Seimbang / Teliti** (tingkat berpikir AI: low, medium, high). Makin teliti makin bagus untuk materi rumit, tapi makin lama dan makin berat bagi jatah gratis.
 - Satu klik "Siapkan materi dengan AI" memakai **satu** permintaan Gemini untuk poin sekaligus 15 sampai 30 soal. Jatah gratis project (cek di AI Studio, Rate Limit) hanya belasan permintaan per hari, jadi aplikasi membatasi tiap akun (bawaan 8 per hari) dan totalnya (bawaan 18). Ubah lewat `AI_DAILY_LIMIT_PER_USER`, `AI_DAILY_LIMIT_GLOBAL`, dan `AI_RESET_TZ`.
 - Migrasi `20260921040000_ai_usage.sql` membuat tabel pencatat pemakaian (hanya bisa diakses server).
 - Migrasi `20260921030000_ruang_belajar.sql` membuat tabel `material_points` serta kolom soal dan catatan di `materials`.
