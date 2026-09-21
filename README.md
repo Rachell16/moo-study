@@ -9,7 +9,7 @@ TanStack Start (React) + Supabase (Postgres, Auth, Storage). Tidak lagi bergantu
 - **Jadwal**: kalender mingguan. Ketik satu kalimat di kotak atas, mis. "rapat hima hari rabu jam 12.00", dan hari, jam, serta lokasinya (kata "di …") dibaca otomatis lalu langsung dijadwalkan. Tombol **Impor jadwal kuliah** membaca jadwal dari teks chat (hari, jam, mata kuliah, ruangan, PJ), lalu mengulangnya tiap minggu.
 - **Tugas**: tempel daftar tugas, nama, tanggal, dan jam terbaca otomatis. Tanda ‼️ berarti penting. Singkatan seperti SMA, ML, CV dihubungkan ke mata kuliahnya. Tiap tugas jadi blok 30 menit di Jadwal yang berakhir di deadline.
 - **Ujian**: hitung mundur UTS/UAS per mata kuliah, plus progres materi yang sudah dan belum di-review.
-- **Timer**: preset Pomodoro (25/5, 50/10, 90/20) atau angka sendiri, istirahat panjang tiap beberapa sesi, mulai otomatis, dan bunyi saat selesai. Sesi fokus yang selesai tercatat, jadi streak dan ringkasan "sesi hari ini" nyata. Streak kembali ke 0 kalau ada hari yang terlewat.
+- **Timer**: preset Podomoro (25/5, 50/10, 90/20) atau angka sendiri, istirahat panjang tiap beberapa sesi, mulai otomatis, dan bunyi saat selesai. Sesi fokus yang selesai tercatat, jadi streak dan ringkasan "sesi hari ini" nyata. Streak kembali ke 0 kalau ada hari yang terlewat.
 - **Ruang belajar** (`/belajar`): rencana "ayo belajar ini hari ini" yang disusun dari jadwal kuliah, deadline tugas, jadwal ujian, dan materi yang belum di-review, lalu ditempatkan di waktu kosong (tombol Jadwalkan memasukkannya ke kalender). Per materi ada ruang belajar (hasil tiap latihan soal tersimpan di **riwayat**: skor, tren, dan soal yang salah, juga terlihat di halaman Materi): PDF di kiri, di kanan poin-poin materi (dibuat AI) dengan tanda "sudah paham", latihan soal pilihan ganda, dan catatan.
 - **Materi**: dikelompokkan per mata kuliah, lalu per Kuliah dan Praktikum. Tiap file ditandai untuk UTS atau UAS dan punya status review.
 - **Google Calendar**: agenda, deadline tugas, dan ujian ikut tersinkron. Ada pengingat otomatis (tugas H-1 dan 3 jam, ujian H-3 dan H-1).
@@ -40,20 +40,21 @@ Tombol "Lanjutkan dengan Google" di halaman masuk memakai Supabase Auth langsung
 ## Sinkron Google Calendar
 
 1. Di https://console.cloud.google.com buat project, aktifkan **Google Calendar API**, isi **OAuth consent screen** (External, tambahkan emailmu di Test users), lalu buat **OAuth client ID** tipe Web application.
-2. Di *Authorized redirect URIs* daftarkan tiap alamat yang dipakai, satu baris per domain:
+2. Di _Authorized redirect URIs_ daftarkan tiap alamat yang dipakai, satu baris per domain:
    - `http://localhost:3000/api/google/callback`
    - `https://DOMAIN-DEPLOY-KAMU/api/google/callback`
 3. Isi `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` di `.env` (dan di environment hosting). Opsional: `TIMEZONE` (bawaan `Asia/Jakarta`).
 4. Buka **Jadwal**, klik **Hubungkan**, lalu izinkan akses kalender.
 
 Cara kerjanya:
+
 - Agenda yang dibuat atau diubah ditandai `lokal`, lalu dikirim ke Google (jadi `tersinkron`). Yang gagal ditandai `gagal` dan dicoba lagi.
 - Pengiriman bertahap, 30 agenda per panggilan, jadi impor jadwal satu semester (ratusan agenda) tidak membuat server kehabisan waktu. Progresnya tampil di kartu Google Calendar.
 - Perubahan dari Google ditarik untuk rentang 30 hari ke belakang sampai 120 hari ke depan, otomatis saat halaman Jadwal dibuka dan tiap 5 menit.
 - Dihapus di satu sisi, ikut terhapus di sisi lain. Kalau diubah di dua tempat sebelum sempat sinkron, versi dari aplikasi ini yang menang.
 - Deadline tugas tampil di Google sebagai "Deadline: nama tugas", berwarna merah tomat kalau penting.
 - Kegiatan seharian di Google dilewati (jadwal butuh jam mulai dan selesai).
-- Selama app Google berstatus *Testing*, izin habis tiap 7 hari. Klik Hubungkan lagi kalau muncul pesan izin kedaluwarsa.
+- Selama app Google berstatus _Testing_, izin habis tiap 7 hari. Klik Hubungkan lagi kalau muncul pesan izin kedaluwarsa.
 
 Refresh token disimpan di tabel `google_connections` yang tidak bisa dibaca dari browser (RLS aktif tanpa policy), hanya server yang mengaksesnya. Login Google memakai `state` bertanda tangan HMAC.
 
@@ -96,6 +97,7 @@ Rencana belajar harian berjalan tanpa AI. Memecah materi jadi poin dan membuat s
 3. Opsional: `GEMINI_MODEL` untuk mengganti model. Bawaannya `gemini-3.7-flash`. Pakai model Flash yang termasuk paket gratis.
 
 Catatan:
+
 - Hanya PDF yang bisa dibaca AI (maksimal sekitar 14 MB). Slide PPT diubah jadi PDF dulu.
 - Di paket gratis, Google boleh memakai isi yang dikirim untuk meningkatkan produknya, jadi jangan dipakai untuk materi rahasia.
 - Kalau muncul pesan batas gratis tercapai, tunggu beberapa menit lalu coba lagi.

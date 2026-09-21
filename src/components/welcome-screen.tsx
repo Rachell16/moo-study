@@ -1,5 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { BookOpen, CalendarDays, GraduationCap, ListChecks } from "lucide-react";
+import {
+  BookOpen,
+  CalendarDays,
+  GraduationCap,
+  ListChecks,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CowMark } from "@/components/cow-mark";
 import cowMascot from "@/assets/cow-mascot.png";
@@ -83,8 +88,8 @@ export function WelcomeScreen() {
                   Selamat datang di kandang belajar
                 </h1>
                 <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">
-                  Tempat menyimpan jadwal kuliah, tugas, dan materi supaya tidak ada yang kelewat.
-                  Pelan-pelan asal konsisten.
+                  Tempat menyimpan jadwal kuliah, tugas, dan materi supaya tidak
+                  ada yang kelewat. Pelan-pelan asal konsisten.
                 </p>
                 <div className="mt-7 flex flex-wrap items-center gap-3">
                   <Button asChild size="lg">
@@ -115,7 +120,7 @@ export function WelcomeScreen() {
                   className="mascot-in relative mx-auto w-full max-w-[420px]"
                 />
                 <div className="font-hand absolute right-[48%] top-1 max-w-[9.5rem] -rotate-3 rounded-2xl border-2 border-foreground bg-card px-3 py-1.5 text-center text-xl font-bold leading-tight">
-                  muuu~ jadwalmu aman di sini!
+                  mooooou~ jadwalmu aman di sini!
                   <span
                     className="absolute -bottom-[9px] right-5 h-4 w-4 rotate-45 border-b-2 border-r-2 border-foreground bg-card"
                     aria-hidden="true"
@@ -126,16 +131,25 @@ export function WelcomeScreen() {
           </section>
 
           <section aria-label="Isi kandang" className="mt-10">
-            <h2 className="font-hand mb-4 text-3xl font-bold">isi kandangnya</h2>
+            <h2 className="font-hand mb-4 text-3xl font-bold">
+              isi kandangnya
+            </h2>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {cards.map(({ label, text, pattern, icon: Icon, tilt }) => (
-                <article key={label} className={`sticker poster text-foreground ${tilt}`}>
-                  <div className={`${pattern} h-20 border-b-2 border-foreground`} />
+                <article
+                  key={label}
+                  className={`sticker poster text-foreground ${tilt}`}
+                >
+                  <div
+                    className={`${pattern} h-20 border-b-2 border-foreground`}
+                  />
                   <div className="p-4">
                     <p className="font-hand flex items-center gap-2 text-2xl font-bold">
                       <Icon className="h-5 w-5 text-primary" /> {label}
                     </p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{text}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      {text}
+                    </p>
                   </div>
                 </article>
               ))}
@@ -144,7 +158,7 @@ export function WelcomeScreen() {
         </main>
 
         <footer className="font-hand mt-10 text-center text-xl opacity-90">
-          dibuat dengan banyak rumput dan sedikit muuu
+          dibuat dengan banyak rumput dan sedikit mooooo~
         </footer>
       </div>
     </div>
