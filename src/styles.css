@@ -107,41 +107,41 @@
 }
 
 .dark {
-  --background: oklch(0.19 0.018 55);
+  --background: oklch(0.165 0.03 255);
   --foreground: oklch(0.93 0.02 85);
-  --card: oklch(0.24 0.02 58);
+  --card: oklch(0.215 0.032 258);
   --card-foreground: oklch(0.93 0.02 85);
-  --popover: oklch(0.24 0.02 58);
+  --popover: oklch(0.215 0.032 258);
   --popover-foreground: oklch(0.93 0.02 85);
-  --primary: oklch(0.74 0.1 122);
-  --primary-foreground: oklch(0.16 0.02 55);
-  --secondary: oklch(0.32 0.03 68);
+  --primary: oklch(0.76 0.11 132);
+  --primary-foreground: oklch(0.15 0.03 255);
+  --secondary: oklch(0.28 0.032 250);
   --secondary-foreground: oklch(0.93 0.02 85);
-  --muted: oklch(0.28 0.02 60);
-  --muted-foreground: oklch(0.74 0.03 72);
-  --accent: oklch(0.6 0.12 35);
-  --accent-foreground: oklch(0.16 0.02 45);
-  --destructive: oklch(0.58 0.15 26);
+  --muted: oklch(0.24 0.03 252);
+  --muted-foreground: oklch(0.69 0.025 235);
+  --accent: oklch(0.7 0.14 58);
+  --accent-foreground: oklch(0.17 0.03 55);
+  --destructive: oklch(0.6 0.17 25);
   --destructive-foreground: oklch(0.96 0.02 85);
-  --border: oklch(0.4 0.03 65);
-  --input: oklch(0.36 0.03 65);
-  --ring: oklch(0.74 0.1 122);
-  --study-pink: oklch(0.38 0.06 14);
-  --study-sage: oklch(0.32 0.05 126);
-  --study-mustard: oklch(0.36 0.08 83);
+  --border: oklch(0.37 0.035 250);
+  --input: oklch(0.32 0.035 250);
+  --ring: oklch(0.76 0.11 132);
+  --study-pink: oklch(0.36 0.065 350);
+  --study-sage: oklch(0.3 0.05 150);
+  --study-mustard: oklch(0.34 0.08 70);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.22 0.02 60);
+  --sidebar: oklch(0.19 0.033 258);
   --sidebar-foreground: oklch(0.93 0.02 85);
-  --sidebar-primary: oklch(0.74 0.1 122);
-  --sidebar-primary-foreground: oklch(0.16 0.02 55);
-  --sidebar-accent: oklch(0.3 0.03 70);
+  --sidebar-primary: oklch(0.76 0.11 132);
+  --sidebar-primary-foreground: oklch(0.15 0.03 255);
+  --sidebar-accent: oklch(0.27 0.032 250);
   --sidebar-accent-foreground: oklch(0.93 0.02 85);
-  --sidebar-border: oklch(0.4 0.03 65);
-  --sidebar-ring: oklch(0.74 0.1 122);
+  --sidebar-border: oklch(0.37 0.035 250);
+  --sidebar-ring: oklch(0.76 0.11 132);
 }
 
 @layer base {
@@ -156,6 +156,26 @@
     letter-spacing: 0;
     background-image: radial-gradient(color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px);
     background-size: 18px 18px;
+  }
+
+  /* Malam di peternakan: langit gelap kebiruan bertabur bintang, plus cahaya bulan samar di pojok. */
+  .dark body {
+    background-image:
+      radial-gradient(circle at 88% 6%, color-mix(in oklab, oklch(0.94 0.03 90) 16%, transparent), transparent 42%),
+      radial-gradient(color-mix(in oklab, white 75%, transparent) 1px, transparent 1.4px),
+      radial-gradient(color-mix(in oklab, white 55%, transparent) 1px, transparent 1.2px),
+      radial-gradient(color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      165px 165px,
+      95px 95px,
+      18px 18px;
+    background-position:
+      0 0,
+      0 0,
+      40px 60px,
+      0 0;
+    background-attachment: fixed, scroll, scroll, scroll;
   }
 }
 
