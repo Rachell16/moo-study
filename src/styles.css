@@ -158,14 +158,26 @@
     background-size: 18px 18px;
   }
 
-  /* Malam di peternakan: langit gelap kebiruan bertabur bintang, plus cahaya bulan samar di pojok. */
+  /* Malam di peternakan: langit navy bertabur bintang, bulan sabit, dan cahayanya yang lembut di pojok. */
   .dark body {
     background-image:
-      radial-gradient(circle at 88% 6%, color-mix(in oklab, oklch(0.94 0.03 90) 16%, transparent), transparent 42%),
+      /* gigitan bulan: warna sama dengan langit, memotong lingkaran bulan jadi sabit */
+      radial-gradient(circle 17px at right 66px top 104px, var(--background) 99%, transparent 100%),
+      /* badan bulan */
+      radial-gradient(circle 19px at right 60px top 110px, oklch(0.95 0.03 90) 99%, transparent 100%),
+      /* dua bintang terang di dekat bulan */
+      radial-gradient(circle 2.2px at right 112px top 138px, oklch(0.97 0.02 90) 99%, transparent 100%),
+      radial-gradient(circle 1.6px at right 142px top 98px, oklch(0.97 0.02 90) 99%, transparent 100%),
+      /* cahaya bulan menyebar samar */
+      radial-gradient(circle 220px at right 60px top 110px, color-mix(in oklab, oklch(0.94 0.03 90) 20%, transparent), transparent 72%),
       radial-gradient(color-mix(in oklab, white 75%, transparent) 1px, transparent 1.4px),
       radial-gradient(color-mix(in oklab, white 55%, transparent) 1px, transparent 1.2px),
       radial-gradient(color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px);
     background-size:
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      100% 100%,
       100% 100%,
       165px 165px,
       95px 95px,
@@ -173,9 +185,26 @@
     background-position:
       0 0,
       0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
       40px 60px,
       0 0;
-    background-attachment: fixed, scroll, scroll, scroll;
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, repeat;
+    background-attachment: fixed, fixed, fixed, fixed, fixed, scroll, scroll, scroll;
+  }
+}
+
+/* Bulan sabit kecil di bilah atas (hanya layar sedang ke atas, supaya tidak sempit di HP). */
+@media (min-width: 768px) {
+  .dark header {
+    background-image:
+      radial-gradient(circle 14px at right 195px top 34px, var(--background) 99%, transparent 100%),
+      radial-gradient(circle 15px at right 190px top 40px, oklch(0.95 0.03 90) 99%, transparent 100%),
+      radial-gradient(circle 2px at right 232px top 24px, oklch(0.97 0.02 90) 99%, transparent 100%),
+      radial-gradient(circle 90px at right 190px top 40px, color-mix(in oklab, oklch(0.94 0.03 90) 22%, transparent), transparent 75%);
+    background-repeat: no-repeat;
   }
 }
 
