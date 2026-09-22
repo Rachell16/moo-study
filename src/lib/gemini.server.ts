@@ -66,7 +66,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export type ThinkingLevel = "low" | "medium" | "high";
 
 function requestBody(
-  pdf: string,
+  fileData: string,
+  mimeType: string,
   prompt: string,
   system: string,
   model: string,
@@ -88,7 +89,7 @@ function requestBody(
     contents: [
       {
         role: "user",
-        parts: [{ inline_data: { mime_type: "application/pdf", data: pdf } }, { text: prompt }],
+        parts: [{ inline_data: { mime_type: mimeType, data: fileData } }, { text: prompt }],
       },
     ],
     generationConfig,
@@ -99,7 +100,8 @@ function requestBody(
 async function callModel(
   model: string,
   key: string,
-  pdf: string,
+  fileData: string,
+  mimeType: string,
   prompt: string,
   system: string,
   level?: ThinkingLevel,
@@ -114,7 +116,7 @@ async function callModel(
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-          body: requestBody(pdf, prompt, system, model, withThinking, level),
+          body: requestBody(fileData, mimeType, prompt, system, model, withThinking, level),
           signal: AbortSignal.timeout(timeout),
         },
       );
@@ -160,25 +162,35 @@ async function callModel(
 const canFallback = (status: number) =>
   status === 429 || status === 404 || status >= 500 || status === 0;
 
-export async function askGemini(opts: {
-  pdf: Uint8Array;
+// Batas ukuran per jenis file. PDF materi biasanya lebih besar; foto jadwal cukup kecil setelah dikompres di browser.
+export const MAX_IMAGE = 8 * 1024 * 1024;
+
+async function askGeminiRaw(opts: {
+  bytes: Uint8Array;
+  mimeType: string;
   prompt: string;
   system: string;
-  thinking?: ThinkingLevel;
+  thinking?: ThinkingLevel | undefined;
 }): Promise<string> {
   const key = process.env["GEMINI_API_KEY"];
   if (!key)
     throw new GeminiError(
       "Fitur AI belum diaktifkan: GEMINI_API_KEY belum diisi di pengaturan server.",
     );
-  if (opts.pdf.length > MAX_PDF_BYTES)
-    throw new GeminiError("PDF terlalu besar untuk dibaca AI (maksimal sekitar 14 MB).");
-  const pdf = toBase64(opts.pdf);
+  const data = toBase64(opts.bytes);
 
   let first: GeminiError | null = null;
   for (const model of modelChain()) {
     try {
-      return await callModel(model, key, pdf, opts.prompt, opts.system, opts.thinking);
+      return await callModel(
+        model,
+        key,
+        data,
+        opts.mimeType,
+        opts.prompt,
+        opts.system,
+        opts.thinking,
+      );
     } catch (e) {
       if (!(e instanceof GeminiError)) throw e;
       first ??= e; // yang dilaporkan: kesalahan model utama
@@ -186,4 +198,43 @@ export async function askGemini(opts: {
     }
   }
   throw first ?? new GeminiError("Gemini tidak memberi jawaban.");
+}
+
+export async function askGemini(opts: {
+  pdf: Uint8Array;
+  prompt: string;
+  system: string;
+  thinking?: ThinkingLevel;
+}): Promise<string> {
+  if (opts.pdf.length > MAX_PDF_BYTES)
+    throw new GeminiError("PDF terlalu besar untuk dibaca AI (maksimal sekitar 14 MB).");
+  return askGeminiRaw({
+    bytes: opts.pdf,
+    mimeType: "application/pdf",
+    prompt: opts.prompt,
+    system: opts.system,
+    thinking: opts.thinking,
+  });
+}
+
+export async function askGeminiImage(opts: {
+  image: Uint8Array;
+  mimeType: string;
+  prompt: string;
+  system: string;
+  thinking?: ThinkingLevel;
+}): Promise<string> {
+  if (opts.image.length > MAX_IMAGE)
+    throw new GeminiError(
+      "Foto terlalu besar (maksimal sekitar 8 MB). Coba foto ulang atau kompres dulu.",
+    );
+  if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(opts.mimeType))
+    throw new GeminiError("Format foto tidak dikenali. Pakai JPG, PNG, atau WEBP.");
+  return askGeminiRaw({
+    bytes: opts.image,
+    mimeType: opts.mimeType,
+    prompt: opts.prompt,
+    system: opts.system,
+    thinking: opts.thinking,
+  });
 }

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BookMarked,
+  CalendarDays,
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
@@ -9,6 +10,7 @@ import {
   MapPin,
   Plus,
   RefreshCw,
+  Rows3,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -17,10 +19,19 @@ import { PaperCard, StudyShell } from "@/components/study-shell";
 import { ScheduleDialog } from "@/components/schedule-dialog";
 import { CoursesDialog } from "@/components/courses-dialog";
 import { ImportTimetableDialog } from "@/components/import-timetable-dialog";
+import { MonthCalendar } from "@/components/month-calendar";
 import { QuickAdd } from "@/components/quick-add";
 import { useCourses, useInvalidateData, useSchedulesBetween } from "@/hooks/use-schedules";
 import { useGoogleCalendar } from "@/hooks/use-google-calendar";
 import { useSession } from "@/hooks/use-session";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  monthCursor as monthCursorOf,
+  monthGridDays,
+  moveToDay,
+  shiftMonth,
+  MONTH_NAMES,
+} from "@/lib/calendar-month";
 import {
   addDays,
   fmtDuration,
@@ -54,10 +65,16 @@ const DAY_NAMES = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 function JadwalPage() {
   const { loading, userId } = useSession();
   const invalidate = useInvalidateData();
+  const [view, setView] = useState<"minggu" | "bulan">("minggu");
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const weekEnd = addDays(weekStart, 7);
+  const [cursor, setCursor] = useState(() => monthCursorOf(new Date()));
+  const grid = monthGridDays(cursor);
+  const rangeStart = view === "bulan" ? grid[0]! : weekStart;
+  const rangeEnd = view === "bulan" ? addDays(grid.at(-1)!, 1) : weekEnd;
 
-  const schedules = useSchedulesBetween(userId, weekStart, weekEnd);
+  const schedules = useSchedulesBetween(userId, rangeStart, rangeEnd);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const courses = useCourses(userId);
   const google = useGoogleCalendar(userId, { auto: true });
   const { connected, sync, syncSoon } = google;
@@ -110,8 +127,22 @@ function JadwalPage() {
     );
   const today = new Date();
 
+  const moveSchedule = async (s: Schedule, newDay: Date) => {
+    if (isSameDay(new Date(s.starts_at), newDay)) return;
+    setMovingId(s.id);
+    const { error } = await supabase
+      .from("schedules")
+      .update({ ...moveToDay(s, newDay), sync_status: "lokal" })
+      .eq("id", s.id);
+    setMovingId(null);
+    if (error) return void toast.error(`Gagal memindah: ${error.message}`);
+    onSaved(
+      `${s.title} dipindah ke ${newDay.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}.`,
+    );
+  };
+
   return (
-    <StudyShell title="Jadwal kuliah & belajar" kicker="Minggu ini">
+    <StudyShell title="Jadwal kuliah & belajar" kicker={view === "minggu" ? "Minggu ini" : "Bulan ini"}>
       {loading ? null : !userId ? (
         <PaperCard className="mx-auto max-w-lg text-center">
           <h2 className="font-display text-2xl font-bold">Masuk dulu untuk menyimpan jadwal</h2>
@@ -126,40 +157,93 @@ function JadwalPage() {
         <>
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setWeekStart(addDays(weekStart, -7))}
-                  aria-label="Minggu sebelumnya"
-                >
-                  <ChevronLeft />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setWeekStart(startOfWeek(new Date()))}
-                >
-                  Minggu ini
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setWeekStart(addDays(weekStart, 7))}
-                  aria-label="Minggu berikutnya"
-                >
-                  <ChevronRight />
-                </Button>
-                <p className="ml-3 text-sm text-muted-foreground">
-                  {fmtRange(weekStart, addDays(weekStart, 6))}
-                </p>
-              </div>
+              {view === "minggu" ? (
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setWeekStart(addDays(weekStart, -7))}
+                    aria-label="Minggu sebelumnya"
+                  >
+                    <ChevronLeft />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekStart(startOfWeek(new Date()))}
+                  >
+                    Minggu ini
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setWeekStart(addDays(weekStart, 7))}
+                    aria-label="Minggu berikutnya"
+                  >
+                    <ChevronRight />
+                  </Button>
+                  <p className="ml-3 text-sm text-muted-foreground">
+                    {fmtRange(weekStart, addDays(weekStart, 6))}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCursor(shiftMonth(cursor, -1))}
+                    aria-label="Bulan sebelumnya"
+                  >
+                    <ChevronLeft />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCursor(monthCursorOf(new Date()))}
+                  >
+                    Bulan ini
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCursor(shiftMonth(cursor, 1))}
+                    aria-label="Bulan berikutnya"
+                  >
+                    <ChevronRight />
+                  </Button>
+                  <p className="ml-3 text-sm text-muted-foreground">
+                    {MONTH_NAMES[cursor.getMonth()]} {cursor.getFullYear()}
+                  </p>
+                </div>
+              )}
               <p className="mt-2 text-sm font-semibold">
                 {items.length} agenda
                 {minutes ? ` • ${fmtDuration(Math.round(minutes))} terjadwal` : ""}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <div
+                className="flex gap-1 rounded-md bg-muted p-1"
+                role="group"
+                aria-label="Tampilan kalender"
+              >
+                <Button
+                  size="sm"
+                  variant={view === "minggu" ? "default" : "ghost"}
+                  aria-pressed={view === "minggu"}
+                  onClick={() => setView("minggu")}
+                >
+                  <Rows3 /> Minggu
+                </Button>
+                <Button
+                  size="sm"
+                  variant={view === "bulan" ? "default" : "ghost"}
+                  aria-pressed={view === "bulan"}
+                  onClick={() => setView("bulan")}
+                >
+                  <CalendarDays /> Bulan
+                </Button>
+              </div>
               <Button variant="outline" onClick={() => setImportOpen(true)}>
                 <CalendarPlus /> Impor jadwal kuliah
               </Button>
@@ -238,51 +322,72 @@ function JadwalPage() {
           </PaperCard>
 
           <PaperCard className="overflow-x-auto p-0">
-            <div className="min-w-[980px]">
-              <div className="grid grid-cols-7 border-b border-border">
-                {DAY_NAMES.map((d, i) => {
-                  const date = addDays(weekStart, i);
-                  const isToday = isSameDay(date, today);
-                  return (
-                    <div key={d} className="border-r border-border p-4 last:border-r-0">
-                      <p
-                        className={`text-xs font-bold uppercase ${isToday ? "text-primary" : "text-muted-foreground"}`}
-                      >
-                        {d}
-                      </p>
-                      <p
-                        className={`font-display text-2xl font-bold ${isToday ? "text-primary" : ""}`}
-                      >
-                        {date.getDate()}
-                      </p>
-                    </div>
-                  );
-                })}
+            {view === "minggu" ? (
+              <div className="min-w-[980px]">
+                <div className="grid grid-cols-7 border-b border-border">
+                  {DAY_NAMES.map((d, i) => {
+                    const date = addDays(weekStart, i);
+                    const isToday = isSameDay(date, today);
+                    return (
+                      <div key={d} className="border-r border-border p-4 last:border-r-0">
+                        <p
+                          className={`text-xs font-bold uppercase ${isToday ? "text-primary" : "text-muted-foreground"}`}
+                        >
+                          {d}
+                        </p>
+                        <p
+                          className={`font-display text-2xl font-bold ${isToday ? "text-primary" : ""}`}
+                        >
+                          {date.getDate()}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="grid min-h-[430px] grid-cols-7 bg-grid">
+                  {DAY_NAMES.map((d, i) => {
+                    const date = addDays(weekStart, i);
+                    const dayItems = items.filter((s) => isSameDay(new Date(s.starts_at), date));
+                    return (
+                      <div key={d} className="space-y-3 border-r border-border p-3 last:border-r-0">
+                        {dayItems.map((s) => (
+                          <ScheduleCard
+                            key={s.id}
+                            schedule={s}
+                            tone={toneFor(s, courses.data ?? [])}
+                            showSync={connected}
+                            onOpen={() => {
+                              setEditing(s);
+                              setFormOpen(true);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid min-h-[430px] grid-cols-7 bg-grid">
-                {DAY_NAMES.map((d, i) => {
-                  const date = addDays(weekStart, i);
-                  const dayItems = items.filter((s) => isSameDay(new Date(s.starts_at), date));
-                  return (
-                    <div key={d} className="space-y-3 border-r border-border p-3 last:border-r-0">
-                      {dayItems.map((s) => (
-                        <ScheduleCard
-                          key={s.id}
-                          schedule={s}
-                          tone={toneFor(s, courses.data ?? [])}
-                          showSync={connected}
-                          onOpen={() => {
-                            setEditing(s);
-                            setFormOpen(true);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            ) : (
+              <MonthCalendar
+                cursor={cursor}
+                items={items}
+                courses={courses.data ?? []}
+                today={today}
+                busyId={movingId}
+                onOpen={(s) => {
+                  setEditing(s);
+                  setFormOpen(true);
+                }}
+                onMove={(s, day) => void moveSchedule(s, day)}
+              />
+            )}
           </PaperCard>
+          {view === "bulan" && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Tarik (drag) satu agenda ke hari lain untuk memindahnya; jam dan durasinya tetap sama.
+              Geser hanya bisa dengan mouse — di HP, buka agendanya lalu ubah tanggal di formnya.
+            </p>
+          )}
 
           {schedules.isSuccess && items.length === 0 && (
             <p className="mt-5 text-sm text-muted-foreground">

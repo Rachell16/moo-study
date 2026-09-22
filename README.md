@@ -121,3 +121,10 @@ Catatan:
 - **Rangkuman siap ujian** (`/belajar/rangkuman/<id mata kuliah>`): poin materi, catatan, dan soal yang sering salah dalam satu halaman. Bisa dicetak atau disimpan sebagai PDF (lewat dialog cetak browser), atau disalin sebagai Markdown untuk Notion.
 - **Jendela mengambang**: tombol di panel sapi membuka timer dan sapi dalam jendela yang melayang di atas semua aplikasi (Chrome dan Edge di komputer).
 - Migrasi baru: `20260921070000_review_cards.sql`.
+
+## Jaga Supabase tetap bangun, mode gelap, impor foto, kalender bulan
+
+- **Jaga Supabase tetap bangun**: `GET /api/keepalive` melakukan query ringan ke Supabase. `vercel.json` menjadwalkannya lewat Vercel Cron tiap 3 hari (`0 3 */3 * *`). Opsional: isi `CRON_SECRET` di Vercel supaya endpoint ini hanya bisa dipanggil oleh Vercel Cron (header `Authorization: Bearer <CRON_SECRET>`), bukan sembarang orang.
+- **Mode gelap**: tombol matahari/bulan di header (siklus Ikuti sistem → Terang → Gelap). Tersimpan di `localStorage` (`moo-theme`), diterapkan lewat skrip inline di `__root.tsx` supaya tidak kedip saat halaman dimuat. Palet warna gelapnya dibuat sendiri (hangat, senada tema sapi), bukan bawaan shadcn.
+- **Impor jadwal dari foto**: di dialog "Impor jadwal kuliah", tombol "Pilih atau foto jadwal" mengirim foto (dikecilkan dulu di browser) ke Gemini, hasilnya teks jadwal yang mengisi kotak teks yang sudah ada — dipakai ulang lewat parser jadwal (`parse-timetable.ts`) dan alur centang-lalu-impor yang sama. Memakai jatah AI harian (kind `jadwal`).
+- **Kalender bulan** di halaman Jadwal: tombol Minggu/Bulan. Di tampilan Bulan, tarik (drag) satu agenda ke sel hari lain untuk memindah tanggalnya (jam dan durasi tetap sama) — hanya jalan dengan mouse; di HP, buka agendanya lalu ubah tanggal di form.

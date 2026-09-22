@@ -1,5 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Camera, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AiQuotaLine } from "@/components/room-panels";
+import { useAiStatus, canUseAi } from "@/hooks/use-study";
+import { resizeImageToJpeg } from "@/lib/image-resize";
+import { importSchedulePhoto } from "@/lib/study.functions";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +69,30 @@ function ImportForm({
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+  const ai = useAiStatus(userId);
+  const importPhoto = useServerFn(importSchedulePhoto);
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const { base64, mimeType } = await resizeImageToJpeg(file);
+      const r = await importPhoto({ data: { imageBase64: base64, mimeType } });
+      setText((prev) => (prev.trim() ? `${prev.trim()}\n\n${r.text}` : r.text));
+      toast.success(
+        "Jadwal dari foto ditambahkan ke kotak teks. Periksa dulu sebelum mencentang kelasnya.",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal membaca foto.");
+    } finally {
+      setPhotoBusy(false);
+      await qc.invalidateQueries({ queryKey: ["ai-status"] });
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const parsed = useMemo(() => parseTimetable(text), [text]);
   const defaults = useMemo(() => defaultSelection(parsed.sessions), [parsed]);
@@ -142,8 +174,48 @@ function ImportForm({
         </DialogDescription>
       </DialogHeader>
 
+      <div className="grid gap-2 rounded-md border border-dashed border-border p-3">
+        <p className="text-sm font-semibold">
+          Atau foto jadwalnya (KRS, jadwal cetak, papan pengumuman)
+        </p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => void pickPhoto(e.target.files?.[0])}
+        />
+        {!ai.data?.configured ? (
+          <p className="text-xs text-muted-foreground">
+            Fitur ini butuh AI. Aktifkan <code>GEMINI_API_KEY</code> dulu (lihat halaman Belajar).
+          </p>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-fit"
+              disabled={photoBusy || !canUseAi(ai.data)}
+              onClick={() => fileRef.current?.click()}
+            >
+              <Camera /> {photoBusy ? "Membaca foto…" : "Pilih atau foto jadwal"}
+            </Button>
+            {photoBusy && (
+              <p className="text-xs text-muted-foreground">
+                Biasanya 10 sampai 30 detik. Jangan tutup dialog ini.
+              </p>
+            )}
+            <AiQuotaLine ai={ai.data} />
+          </>
+        )}
+      </div>
+
       <label className="grid gap-1.5 text-sm font-semibold">
-        Teks jadwal
+        Teks jadwal{" "}
+        {photoBusy && (
+          <Sparkles className="inline h-4 w-4 animate-pulse text-primary" aria-hidden="true" />
+        )}
         <textarea
           className="field min-h-28 w-full font-mono text-xs"
           value={text}

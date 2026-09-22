@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { withQuota } from "./ai-quota.server";
 
 // File *.functions.ts ikut ke bundle browser, jadi modul server dimuat lewat import() di dalam handler.
 
@@ -55,27 +56,6 @@ async function loadPdf(
 
 // Jatah dicatat sebelum memanggil Gemini. Kalau panggilan gagal sebelum Gemini memproses (kunci salah, server sibuk, batas Google),
 // catatannya dibatalkan supaya tidak menghabiskan jatah; kalau Gemini sudah menjawab tapi jawabannya tidak terbaca, tetap terhitung.
-async function withQuota<T>(userId: string, kind: string, run: () => Promise<T>): Promise<T> {
-  const quota = await import("./ai-quota.server");
-  const { AiParseError } = await import("./study-ai");
-  const store = await quota.adminStore();
-  let slot: { id: string };
-  try {
-    slot = await quota.reserve(store, userId, kind, quota.limitsFromEnv());
-  } catch (e) {
-    if (e instanceof quota.QuotaError) throw e;
-    throw new Error(
-      "Pencatat jatah AI belum siap. Jalankan migrasi 20260921040000_ai_usage.sql di Supabase.",
-    );
-  }
-  try {
-    return await run();
-  } catch (e) {
-    if (!(e instanceof AiParseError)) await store.remove(slot.id).catch(() => undefined);
-    throw e;
-  }
-}
-
 // Satu permintaan ke Gemini menghasilkan poin materi sekaligus soal latihan. Poin lama diganti (tanda "paham" ikut hilang), jadi klien meminta `force` untuk membuat ulang.
 export const prepareMaterial = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -154,4 +134,35 @@ export const generateQuiz = createServerFn({ method: "POST" })
       .eq("id", data.materialId);
     if (error) throw new Error(error.message);
     return { count: questions.length };
+  });
+
+const photoInput = z.object({
+  imageBase64: z.string().min(1),
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  depth: z.enum(["cepat", "seimbang", "teliti"]).optional(),
+});
+
+// Baca jadwal kuliah dari foto (KRS, jadwal cetak, papan pengumuman). Hasilnya teks bebas dengan format yang sama
+// seperti jadwal yang ditempel dari chat, supaya bisa langsung dibaca ulang oleh parser jadwal yang sudah ada
+// dan pengguna tetap bisa memeriksa/mengedit hasilnya sebelum diimpor.
+export const importSchedulePhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(photoInput)
+  .handler(async ({ context, data }) => {
+    const { askGeminiImage } = await import("./gemini.server");
+    const { SCHEDULE_PHOTO_PROMPT, SCHEDULE_SYSTEM_PROMPT, cleanScheduleText } =
+      await import("./import-photo");
+    const { thinkingFor } = await import("./study-ai");
+
+    const bytes = Uint8Array.from(Buffer.from(data.imageBase64, "base64"));
+    const text = await withQuota(context.userId, "jadwal", async () =>
+      askGeminiImage({
+        image: bytes,
+        mimeType: data.mimeType,
+        prompt: SCHEDULE_PHOTO_PROMPT,
+        system: SCHEDULE_SYSTEM_PROMPT,
+        thinking: thinkingFor(data.depth),
+      }),
+    );
+    return { text: cleanScheduleText(text) };
   });

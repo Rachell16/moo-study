@@ -131,3 +131,30 @@ export async function adminStore(): Promise<QuotaStore> {
     },
   };
 }
+
+// Jatah dicatat sebelum memanggil Gemini; kalau panggilan gagal sebelum Gemini memproses (kunci salah, server sibuk,
+// batas Google), catatannya dibatalkan supaya tidak menghabiskan jatah. Kalau Gemini sudah menjawab tapi jawabannya
+// tidak terbaca (AiParseError), tetap terhitung karena permintaannya sudah benar-benar terpakai.
+export async function withQuota<T>(
+  userId: string,
+  kind: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  const { AiParseError } = await import("./study-ai");
+  const store = await adminStore();
+  let slot: { id: string };
+  try {
+    slot = await reserve(store, userId, kind, limitsFromEnv());
+  } catch (e) {
+    if (e instanceof QuotaError) throw e;
+    throw new Error(
+      "Pencatat jatah AI belum siap. Jalankan migrasi 20260921040000_ai_usage.sql di Supabase.",
+    );
+  }
+  try {
+    return await run();
+  } catch (e) {
+    if (!(e instanceof AiParseError)) await store.remove(slot.id).catch(() => undefined);
+    throw e;
+  }
+}

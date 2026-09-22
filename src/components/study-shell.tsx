@@ -9,15 +9,20 @@ import {
   LogIn,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
+  Sun,
   X,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CowMark } from "@/components/cow-mark";
 import { useSession } from "@/hooks/use-session";
+import { useTheme } from "@/hooks/use-theme";
+import { THEME_LABEL } from "@/lib/theme";
 import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
@@ -57,6 +62,8 @@ export function StudyShell({
   const path = useRouterState({ select: (state) => state.location.pathname });
   const { loading, userId } = useSession();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const ThemeIcon = theme.theme === "dark" ? Moon : theme.theme === "light" ? Sun : Monitor;
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside
@@ -126,6 +133,15 @@ export function StudyShell({
             aria-label="Buka menu"
           >
             <Menu />
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={theme.cycle}
+            aria-label={`Tema: ${THEME_LABEL[theme.theme]}. Klik untuk ganti.`}
+            title={`Tema: ${THEME_LABEL[theme.theme]}`}
+          >
+            <ThemeIcon />
           </Button>
           <Button
             size="icon"
