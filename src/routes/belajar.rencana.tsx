@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, FileText } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PaperCard, StudyShell } from "@/components/study-shell";
@@ -79,6 +79,11 @@ function RencanaPage() {
 
   return (
     <StudyShell title="Rencana menuju ujian" kicker="Sampai UTS dan UAS">
+      <Button asChild variant="ghost" size="sm" className="-ml-3 mb-3">
+        <Link to="/belajar">
+          <ArrowLeft /> Ruang belajar
+        </Link>
+      </Button>
       {loading ? null : !userId ? (
         <PaperCard className="mx-auto max-w-lg text-center">
           <h2 className="font-display text-2xl font-bold">Masuk dulu ya</h2>

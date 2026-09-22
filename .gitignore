@@ -39,3 +39,6 @@ dist-ssr
 # Hasil build/deploy
 .vercel
 .tanstack
+
+# Dibuat otomatis tiap build (TanStack Start route crawler); jangan disimpan di git
+src/routeTree.gen.ts
