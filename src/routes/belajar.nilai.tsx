@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GradeEditor } from "@/components/grade-editor";
 import { GradeQuickImport } from "@/components/grade-quick-import";
 import { PaperCard, StudyShell } from "@/components/study-shell";
-import { useCourses } from "@/hooks/use-schedules";
+import { useCourses, useExams } from "@/hooks/use-schedules";
 import { useSession } from "@/hooks/use-session";
 import {
   groupByCourse,
@@ -40,16 +40,35 @@ function NilaiPage() {
   const { loading, userId } = useSession();
   const courses = useCourses(userId);
   const grades = useGradeComponents(userId);
+  const exams = useExams(userId);
   const [openCourse, setOpenCourse] = useState<string | null>(null);
 
   const byCourse = useMemo(() => groupByCourse(grades.data ?? []), [grades.data]);
   const rowsByCourse = useMemo(() => groupRowsByCourse(grades.data ?? []), [grades.data]);
+  // Ujian yang paling dekat waktunya per mata kuliah (belum lewat), supaya "yang paling menentukan" ikut
+  // musim UTS/UAS yang sedang berjalan, bukan cuma bobot mentah paling besar.
+  const soonestExamKind = useMemo(() => {
+    const now = Date.now();
+    const soonest = new Map<string, { kind: string; at: number }>();
+    for (const e of exams.data ?? []) {
+      if (!e.course_id || !e.exam_kind) continue;
+      const at = new Date(e.starts_at).getTime();
+      if (at <= now) continue;
+      const cur = soonest.get(e.course_id);
+      if (!cur || at < cur.at) soonest.set(e.course_id, { kind: e.exam_kind, at });
+    }
+    return new Map([...soonest.entries()].map(([courseId, v]) => [courseId, v.kind]));
+  }, [exams.data]);
   const ranked = useMemo(
     () =>
       rankByImpact(
-        (courses.data ?? []).map((c) => ({ courseId: c.id, components: byCourse.get(c.id) ?? [] })),
+        (courses.data ?? []).map((c) => ({
+          courseId: c.id,
+          components: byCourse.get(c.id) ?? [],
+          soonestExamKind: soonestExamKind.get(c.id) ?? null,
+        })),
       ),
-    [courses.data, byCourse],
+    [courses.data, byCourse, soonestExamKind],
   );
   const courseName = (id: string) => courses.data?.find((c) => c.id === id);
 
@@ -76,8 +95,9 @@ function NilaiPage() {
               <div className="min-w-0">
                 <h2 className="font-display text-2xl font-bold">Belajar apa dulu, demi nilai</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Diurutkan dari komponen belum dinilai dengan bobot paling besar — itu yang paling
-                  menentukan nilai akhirmu. Isi dulu bobot dan nilai tiap mata kuliah di bawah.
+                  Diurutkan dari komponen yang lagi berlangsung sekarang (mis. musim UTS, ya bobot
+                  UTS-nya) — bukan komponen berbobot terbesar yang belum waktunya. Isi dulu bobot
+                  dan nilai tiap mata kuliah di bawah.
                 </p>
               </div>
             </div>

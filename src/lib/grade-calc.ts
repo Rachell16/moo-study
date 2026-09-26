@@ -16,10 +16,19 @@ export type CourseGradeSummary = {
   earnedPoints: number; // sum(score * weight / 100) dari yang sudah dinilai
   runningPercent: number | null; // earnedPoints / gradedWeight * 100 — rata-rata performa sejauh ini (null kalau belum ada yang dinilai)
   projectedFinal: number | null; // proyeksi nilai akhir kalau sisanya dapat skor sama seperti rata-rata sekarang (null kalau belum ada yang dinilai)
-  nextComponent: GradeComponent | null; // komponen belum dinilai dengan bobot terbesar — ini yang paling menentukan
+  // Komponen belum dinilai yang paling layak dikejar sekarang: kalau `soonestExamKind` diisi (mis. "uts" waktu
+  // musim UTS) dan ada komponen ungraded yang namanya cocok, itu yang dipakai — walau ada komponen lain (mis.
+  // UAS) dengan bobot lebih besar tapi belum musimnya. Tanpa info musim, atau tidak ada yang cocok, jatuh
+  // kembali ke komponen ungraded dengan bobot terbesar.
+  nextComponent: GradeComponent | null;
 };
 
-export function summarizeCourse(components: GradeComponent[]): CourseGradeSummary {
+// `soonestExamKind`: jenis ujian (mis. "uts"/"uas") yang paling dekat waktunya untuk mata kuliah ini, kalau
+// diketahui — dipakai supaya "yang paling menentukan" tidak melompat ke UAS padahal masih musim UTS.
+export function summarizeCourse(
+  components: GradeComponent[],
+  soonestExamKind?: string | null,
+): CourseGradeSummary {
   const totalWeight = round2(components.reduce((s, c) => s + c.weightPercent, 0));
   const graded = components.filter((c) => c.score !== null);
   const ungraded = components.filter((c) => c.score === null);
@@ -29,9 +38,12 @@ export function summarizeCourse(components: GradeComponent[]): CourseGradeSummar
   const runningPercent = gradedWeight > 0 ? round2((earnedPoints / gradedWeight) * 100) : null;
   const projectedFinal =
     gradedWeight > 0 ? round2(earnedPoints + (runningPercent! * remainingWeight) / 100) : null;
-  const nextComponent = ungraded.length
-    ? ungraded.reduce((a, b) => (b.weightPercent > a.weightPercent ? b : a))
-    : null;
+  const byWeight = (list: GradeComponent[]) =>
+    list.length ? list.reduce((a, b) => (b.weightPercent > a.weightPercent ? b : a)) : null;
+  const inSeason = soonestExamKind
+    ? ungraded.filter((c) => c.name.toLowerCase().includes(soonestExamKind.toLowerCase()))
+    : [];
+  const nextComponent = byWeight(inSeason) ?? byWeight(ungraded);
   return {
     totalWeight,
     gradedWeight,
@@ -56,12 +68,12 @@ export function neededOnRemaining(
 }
 
 // Urutkan beberapa mata kuliah berdasarkan mana yang paling "berdampak" untuk dipelajari duluan:
-// bobot komponen berikutnya yang belum dinilai (makin besar makin genting), lalu nilai berjalan yang lebih lemah duluan.
-export function rankByImpact<T extends { courseId: string; components: GradeComponent[] }>(
-  courses: T[],
-): (T & { summary: CourseGradeSummary })[] {
+// bobot komponen yang paling layak dikejar sekarang (lihat summarizeCourse), lalu nilai berjalan yang lebih lemah duluan.
+export function rankByImpact<
+  T extends { courseId: string; components: GradeComponent[]; soonestExamKind?: string | null },
+>(courses: T[]): (T & { summary: CourseGradeSummary })[] {
   return courses
-    .map((c) => ({ ...c, summary: summarizeCourse(c.components) }))
+    .map((c) => ({ ...c, summary: summarizeCourse(c.components, c.soonestExamKind) }))
     .filter((c) => c.summary.nextComponent !== null)
     .sort((a, b) => {
       const w = b.summary.nextComponent!.weightPercent - a.summary.nextComponent!.weightPercent;

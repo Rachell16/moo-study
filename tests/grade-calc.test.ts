@@ -76,3 +76,44 @@ test("urutan prioritas belajar: bobot komponen berikutnya paling besar dulu, lal
     ["b", "c", "a"],
   ); // bobot 50 dulu (b lebih lemah dari c), baru bobot 40
 });
+
+test("musim ujian: komponen yang dipakai ikut jenis ujian yang lagi berlangsung, bukan bobot terbesar", () => {
+  const comps = [c("Tugas", 10, 90), c("UTS", 15, null), c("UAS", 40, null), c("LKP", 30, null)];
+  // musim UTS: walau UAS (40%) dan LKP (30%) lebih besar, yang dipakai tetap UTS
+  assert.equal(summarizeCourse(comps, "uts").nextComponent!.name, "UTS");
+  // musim UAS: giliran UAS yang dipakai
+  assert.equal(summarizeCourse(comps, "uas").nextComponent!.name, "UAS");
+  // tidak tahu musim apa (mis. belum ada jadwal ujian): jatuh kembali ke bobot terbesar seperti sebelumnya
+  assert.equal(summarizeCourse(comps).nextComponent!.name, "UAS");
+  assert.equal(summarizeCourse(comps, null).nextComponent!.name, "UAS");
+  // "uts" juga cocok ke "UTSP" (UTS praktikum), tapi tidak ke "UAS"
+  const withUtsp = [c("UTS", 15, null), c("UTSP", 10, null), c("UAS", 40, null)];
+  assert.equal(summarizeCourse(withUtsp, "uts").nextComponent!.name, "UTS"); // UTS (15) > UTSP (10), sama-sama cocok musim uts
+  // musim ujian tersebut ada, tapi tidak ada komponen yang namanya cocok: jatuh ke bobot terbesar
+  const noMatch = [c("Tugas", 20, null), c("Proyek", 50, null)];
+  assert.equal(summarizeCourse(noMatch, "uts").nextComponent!.name, "Proyek");
+});
+
+test("ranking prioritas ikut musim ujian per mata kuliah, bukan cuma bobot mentah", () => {
+  const courses = [
+    {
+      courseId: "sma",
+      components: [c("UTS", 14, null), c("UAS", 50, null)],
+      soonestExamKind: "uts",
+    }, // musim UTS
+    {
+      courseId: "vk",
+      components: [c("UTS", 15, null), c("UAS", 40, null)],
+      soonestExamKind: "uts",
+    }, // musim UTS juga
+  ];
+  const ranked = rankByImpact(courses);
+  // dengan bobot mentah (lama), Visi Komputer akan dibandingkan pakai UAS-nya (40%); sekarang yang dibandingkan
+  // bobot UTS-nya (15% dan 14%) karena itu yang lagi musim, jadi urutannya tetap wajar
+  assert.deepEqual(
+    ranked.map((r) => r.courseId),
+    ["vk", "sma"],
+  );
+  for (const r of ranked) assert.equal(r.summary.nextComponent!.name, "UTS"); // bukan UAS, walau UAS bobotnya jauh lebih besar
+  assert.equal(ranked[0]!.summary.nextComponent!.weightPercent, 15);
+});
