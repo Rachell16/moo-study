@@ -11,6 +11,7 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { getAiStatus } from "@/lib/study.functions";
 import { useQuizSummaries } from "@/hooks/use-quiz-history";
+import { groupByCourse, useGradeComponents } from "@/hooks/use-grades";
 import { useDueCount } from "@/hooks/use-spaced";
 import { buildPlan } from "@/lib/study-plan";
 import { addDays, startOfDay, ymd } from "@/lib/schedule-utils";
@@ -78,10 +79,11 @@ export function usePlan(userId: string | null) {
   const progress = usePointProgress(userId);
   const summaries = useQuizSummaries(userId);
   const dueCount = useDueCount(userId);
+  const grades = useGradeComponents(userId);
 
   const ready =
     !!now &&
-    [schedules, tasks, exams, materials, courses, progress, summaries, dueCount].every(
+    [schedules, tasks, exams, materials, courses, progress, summaries, dueCount, grades].every(
       (q) => q.isSuccess,
     );
 
@@ -101,6 +103,7 @@ export function usePlan(userId: string | null) {
         ),
       ),
       dueCards: dueCount.data ?? 0,
+      gradeComponents: groupByCourse(grades.data ?? EMPTY),
     });
   }, [
     now,
@@ -111,6 +114,9 @@ export function usePlan(userId: string | null) {
     materials.data,
     courses.data,
     progress.data,
+    summaries.data,
+    dueCount.data,
+    grades.data,
   ]);
 
   return { plan, loading: !!userId && !plan, now, courses: courses.data ?? EMPTY };

@@ -1,6 +1,7 @@
 // Rencana belajar hari ini: pilih apa yang paling perlu dipelajari lalu tempatkan di waktu kosong.
 // Berbasis aturan (tanpa AI dan tanpa koneksi), jadi gratis, cepat, dan hasilnya bisa dijelaskan.
 import { buildRoadmaps } from "./study-roadmap.ts";
+import type { GradeComponent } from "./grade-calc.ts";
 import { daysUntil, fmtTime, type Course, type Material, type Schedule } from "./schedule-utils.ts";
 
 export type PlanKind = "tugas" | "ujian" | "persiapan" | "ulas" | "lanjut" | "review" | "ulang";
@@ -29,6 +30,10 @@ export type PlanInput = {
   progress: Map<string, { done: number; total: number }>; // poin materi yang sudah dipahami
   quizBest?: Map<string, number>; // skor latihan terbaik (persen) per materi
   dueCards?: number; // kartu hafalan berjarak yang jatuh tempo hari ini
+  // Komponen nilai (bobot %, nilai) per mata kuliah. Dipakai untuk mendorong prioritas item yang berkaitan
+  // dengan komponen yang RELEVAN SEKARANG (mis. selama musim UTS, yang dipakai bobot UTS-nya, bukan UAS —
+  // walau UAS bobotnya lebih besar, itu belum waktunya).
+  gradeComponents?: Map<string, GradeComponent[]>;
   dayStartHour?: number;
   dayEndHour?: number;
   maxBlocks?: number;
@@ -43,7 +48,6 @@ const MIN_BLOCK = 25;
 const natural = (a: Material, b: Material) => a.name.localeCompare(b.name, "id", { numeric: true });
 const sameDay = (a: Date, b: Date) => daysUntil(a, b) === 0;
 const isClass = (s: Schedule) => s.activity_type === "kuliah" || s.activity_type === "praktikum";
-
 // "Kuliah_03_supervised-learning.pdf" jadi "Kuliah 03 supervised-learning"
 export function cleanMaterialName(name: string) {
   return name
@@ -99,6 +103,18 @@ export function buildPlan(input: PlanInput): Plan {
   const endHour = input.dayEndHour ?? 22;
   const maxBlocks = input.maxBlocks ?? 4;
   const courseOf = (id: string | null) => courses.find((c) => c.id === id);
+  // Dorongan skor (0-25 poin) dari bobot SATU komponen nilai yang relevan untuk item ini — bukan komponen
+  // dengan bobot terbesar di mata kuliah itu. Jadi kalau UAS 50% tapi belum musimnya (materinya bukan untuk
+  // UAS, atau ujiannya masih jauh), yang dipakai tetap bobot UTS-nya, bukan ikut terdongkrak UAS.
+  const gradeBoost = (courseId: string | null, matchName: (nameLower: string) => boolean) => {
+    if (!courseId) return 0;
+    const comps = input.gradeComponents?.get(courseId) ?? [];
+    const c = comps.find((c) => c.score === null && matchName(c.name.toLowerCase()));
+    return c ? Math.round((c.weightPercent / 100) * 25) : 0;
+  };
+  const scopeMatch = (scope: string) => (n: string) => n.includes(scope); // "uts" cocok juga ke "utsp", tidak ke "uas"
+  const tugasMatch = (n: string) =>
+    n.includes("tugas") || n.includes("kuis") || n.includes("aktivitas");
   const items: Omit<PlanItem, "slot" | "scheduled">[] = [];
   const used = new Set<string>(); // satu materi hanya muncul sekali
 
@@ -145,7 +161,7 @@ export function buildPlan(input: PlanInput): Plan {
       title: `Kerjakan ${t.title}`,
       reason: `Deadline ${deadlineText(deadline, now)}.`,
       minutes: 60,
-      score: base + (t.urgent ? 15 : 0),
+      score: base + (t.urgent ? 15 : 0) + gradeBoost(t.course_id, tugasMatch),
       courseId: t.course_id,
       materialId: null,
     });
@@ -176,7 +192,12 @@ export function buildPlan(input: PlanInput): Plan {
             ? `${road.kindLabel} ${road.courseName} ${when}, ${road.pending} materi belum di-review.`
             : `${road.kindLabel} ${road.courseName} ${when}. Saatnya latihan soal.`,
         minutes: it.minutes,
-        score: base,
+        score:
+          base +
+          gradeBoost(
+            it.courseId,
+            road.exam.exam_kind ? scopeMatch(road.exam.exam_kind) : () => false,
+          ),
         courseId: it.courseId,
         materialId: it.materialId,
       });
@@ -208,7 +229,7 @@ export function buildPlan(input: PlanInput): Plan {
       title: `Lanjutkan ${cleanMaterialName(m.name)}`,
       reason: `${p.done} dari ${p.total} poin sudah kamu pahami.`,
       minutes: 30,
-      score: 70,
+      score: 70 + gradeBoost(m.course_id, scopeMatch(m.exam_scope)),
       courseId: m.course_id,
       materialId: m.id,
     });
@@ -229,7 +250,7 @@ export function buildPlan(input: PlanInput): Plan {
         title: `Baca ${cleanMaterialName(next.name)}`,
         reason: `Besok ada ${s.title}. Baca dulu supaya nyambung.`,
         minutes: 30,
-        score: 62,
+        score: 62 + gradeBoost(s.course_id, scopeMatch(next.exam_scope)),
         courseId: s.course_id,
         materialId: next.id,
       });
@@ -240,7 +261,7 @@ export function buildPlan(input: PlanInput): Plan {
         title: `Ulas ${cleanMaterialName(next.name)}`,
         reason: `Hari ini ada ${s.title}. Ulas materinya selagi masih segar.`,
         minutes: 30,
-        score: 52,
+        score: 52 + gradeBoost(s.course_id, scopeMatch(next.exam_scope)),
         courseId: s.course_id,
         materialId: next.id,
         notBefore: new Date(s.ends_at),
@@ -263,7 +284,7 @@ export function buildPlan(input: PlanInput): Plan {
       title: `Review ${cleanMaterialName(m.name)}`,
       reason: `${courseOf(m.course_id)?.name ?? "Materi"} belum pernah di-review.`,
       minutes: 30,
-      score: 20 + Math.min(age, 10),
+      score: 20 + Math.min(age, 10) + gradeBoost(m.course_id, scopeMatch(m.exam_scope)),
       courseId: m.course_id,
       materialId: m.id,
     });

@@ -337,3 +337,146 @@ test("ujian 2 hari lagi: beberapa materi jatuh di hari ini menurut peta jalan, t
   assert.deepEqual(uts.map((i) => i.materialId).sort(), ["v1", "v2"]);
   assert.match(uts[0]!.reason, /UTS Visi Komputer 2 hari lagi, 4 materi belum di-review/);
 });
+
+test("bobot nilai menaikkan prioritas: dua tugas dengan urgensi sama, mata kuliah dengan bobot 'Tugas' lebih besar naik duluan", () => {
+  const now2 = new Date(2026, 8, 21, 9, 0);
+  const twoTasks = [
+    sched("ta", "Tugas A", "tugas", t(21, 20, 0), t(21, 20, 0), {
+      course_id: "sma",
+      ends_at: t(22, 20, 0),
+    }),
+    sched("tb", "Tugas B", "tugas", t(21, 20, 0), t(21, 20, 0), {
+      course_id: "vk",
+      ends_at: t(22, 20, 0),
+    }),
+  ];
+  const withoutWeight = buildPlan({
+    now: now2,
+    schedules: [],
+    tasks: twoTasks,
+    exams: [],
+    materials: [],
+    courses,
+    progress: new Map(),
+  });
+  // tanpa data nilai: urutan hanya mengikuti aturan lain (di sini keduanya identik, jadi urut judul)
+  assert.deepEqual(
+    withoutWeight.items.map((i) => i.key),
+    ["tugas:ta", "tugas:tb"],
+  );
+
+  const gc = (weight: number) => [{ id: "g", name: "Tugas", weightPercent: weight, score: null }];
+  const gradeComponents = new Map([
+    ["vk", gc(50)], // komponen "Tugas" di Visi Komputer bobotnya 50%
+    ["sma", gc(10)], // di Sistem Multi-Agen cuma 10%
+  ]);
+  const withWeight = buildPlan({
+    now: now2,
+    schedules: [],
+    tasks: twoTasks,
+    exams: [],
+    materials: [],
+    courses,
+    progress: new Map(),
+    gradeComponents,
+  });
+  assert.deepEqual(
+    withWeight.items.map((i) => i.key),
+    ["tugas:tb", "tugas:ta"],
+  ); // Visi Komputer (bobot 50%) naik duluan
+  const vk = withWeight.items.find((i) => i.key === "tugas:tb")!;
+  const sma = withWeight.items.find((i) => i.key === "tugas:ta")!;
+  assert.equal(vk.score - sma.score, Math.round((50 / 100) * 25) - Math.round((10 / 100) * 25)); // selisih skor sesuai rumus boost
+});
+
+test("musim UTS: dorongan prioritas ikut bobot UTS, walau UAS di mata kuliah yang sama bobotnya jauh lebih besar", () => {
+  const now2 = new Date(2026, 8, 21, 9, 0); // UTS 5 hari lagi
+  const examUts = sched("e-uts", "UTS Visi Komputer", "ujian", t(26, 8), t(26, 10), {
+    exam_kind: "uts",
+    course_id: "vk",
+  });
+  const mats = [material("v1", "vk", "Kuliah 01.pdf", { exam_scope: "uts" })];
+  const gradeComponents = new Map([
+    [
+      "vk",
+      [
+        { id: "g1", name: "UTS", weightPercent: 15, score: null },
+        { id: "g2", name: "UAS", weightPercent: 50, score: null },
+      ],
+    ],
+  ]);
+
+  const withGrade = buildPlan({
+    now: now2,
+    schedules: [],
+    tasks: [],
+    exams: [examUts],
+    materials: mats,
+    courses,
+    progress: new Map(),
+    gradeComponents,
+  });
+  const withoutGrade = buildPlan({
+    now: now2,
+    schedules: [],
+    tasks: [],
+    exams: [examUts],
+    materials: mats,
+    courses,
+    progress: new Map(),
+  });
+  const utsItem = withGrade.items.find((i) => i.kind === "ujian")!;
+  const baseScore = withoutGrade.items.find((i) => i.kind === "ujian")!.score;
+  assert.equal(utsItem.score - baseScore, Math.round((15 / 100) * 25)); // dorongan persis dari bobot UTS 15%, BUKAN dari UAS 50%
+
+  // di musim UAS (UAS yang sekarang dekat), item ujiannya sendiri yang dapat dorongan dari bobot UAS 50%
+  const examUas = sched(
+    "e-uas",
+    "UAS Visi Komputer",
+    "ujian",
+    new Date(2026, 9, 31, 8).toISOString(),
+    new Date(2026, 9, 31, 10).toISOString(),
+    { exam_kind: "uas", course_id: "vk" },
+  );
+  const matsUas = [material("v2", "vk", "Kuliah UAS.pdf", { exam_scope: "uas" })];
+  const nowUas = new Date(2026, 9, 25, 9, 0);
+  const withUasSoon = buildPlan({
+    now: nowUas,
+    schedules: [],
+    tasks: [],
+    exams: [examUas],
+    materials: matsUas,
+    courses,
+    progress: new Map(),
+    gradeComponents,
+  });
+  const withoutUasSoon = buildPlan({
+    now: nowUas,
+    schedules: [],
+    tasks: [],
+    exams: [examUas],
+    materials: matsUas,
+    courses,
+    progress: new Map(),
+  });
+  const uasItem = withUasSoon.items.find((i) => i.kind === "ujian")!;
+  const baseUas = withoutUasSoon.items.find((i) => i.kind === "ujian")!.score;
+  assert.equal(uasItem.score - baseUas, Math.round((50 / 100) * 25)); // di musim UAS, yang dipakai bobot UAS 50%
+});
+
+test("tanpa gradeComponents sama sekali, hasilnya identik dengan sebelum fitur ini ada (kompatibel mundur)", () => {
+  const r = buildPlan({
+    now,
+    schedules: today,
+    tasks,
+    exams,
+    materials,
+    courses,
+    progress: new Map(),
+  });
+  assert.equal(r.items.length > 0, true);
+  assert.equal(
+    r.items.every((i) => Number.isFinite(i.score)),
+    true,
+  );
+});

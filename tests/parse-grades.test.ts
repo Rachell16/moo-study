@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { matchBlocks, parseGradeText } from "../src/lib/parse-grades.ts";
+import {
+  GRADE_PHOTO_PROMPT,
+  GRADE_SYSTEM_PROMPT,
+  cleanScheduleText,
+} from "../src/lib/import-photo.ts";
 
 import { defaultAliases } from "../src/lib/course-aliases.ts";
 
@@ -76,4 +81,28 @@ test("pencocokan otomatis: singkatan dikenal, alias kustom, dan header tidak dik
     matched.map((b) => b.courseId),
     ["str", "sma", "ml", "hai", "vk", null], // VISKOM cocok lewat alias kustom, PPKBP tidak dikenal (beda dari PPKA/PPAI)
   );
+});
+
+test("simulasi jawaban AI mengikuti format yang diminta prompt: bisa langsung dibaca parser", () => {
+  const simulatedAnswer = `STR
+Tugas+aktivitas 10%
+UTS 15%
+UAS 20%
+UTSP 25%
+UASP 30%
+
+SMA
+Aktifitas 5%
+Projek 50%
+Tugas 5%
+Kuis 5%
+UTS 15%
+UAS 20%`;
+  const blocks = parseGradeText(cleanScheduleText(simulatedAnswer));
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0]!.header, "STR");
+  assert.equal(blocks[1]!.header, "SMA");
+  assert.match(GRADE_SYSTEM_PROMPT, /jangan mengarang/);
+  assert.match(GRADE_PHOTO_PROMPT, /satu baris kosong/);
+  assert.equal(cleanScheduleText("```\nSTR\nUAS 100%\n```"), "STR\nUAS 100%");
 });

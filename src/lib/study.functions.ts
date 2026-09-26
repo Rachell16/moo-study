@@ -166,3 +166,28 @@ export const importSchedulePhoto = createServerFn({ method: "POST" })
     );
     return { text: cleanScheduleText(text) };
   });
+
+// Baca rubrik nilai dari foto (catatan, slide dosen, kontrak perkuliahan; bisa berisi beberapa mata kuliah
+// sekaligus). Hasilnya teks bebas dengan format yang sama seperti impor cepat manual, supaya bisa langsung
+// dibaca ulang oleh parser yang sama dan pengguna tetap bisa memeriksa/mengedit sebelum diterapkan.
+export const importGradesPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(photoInput)
+  .handler(async ({ context, data }) => {
+    const { askGeminiImage } = await import("./gemini.server");
+    const { GRADE_PHOTO_PROMPT, GRADE_SYSTEM_PROMPT, cleanScheduleText } =
+      await import("./import-photo");
+    const { thinkingFor } = await import("./study-ai");
+
+    const bytes = Uint8Array.from(Buffer.from(data.imageBase64, "base64"));
+    const text = await withQuota(context.userId, "nilai", async () =>
+      askGeminiImage({
+        image: bytes,
+        mimeType: data.mimeType,
+        prompt: GRADE_PHOTO_PROMPT,
+        system: GRADE_SYSTEM_PROMPT,
+        thinking: thinkingFor(data.depth),
+      }),
+    );
+    return { text: cleanScheduleText(text) };
+  });

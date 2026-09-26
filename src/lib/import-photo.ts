@@ -40,3 +40,31 @@ export function cleanScheduleText(raw: string): string {
     .replace(/```\s*$/, "")
     .trim();
 }
+
+// ---- rubrik nilai (bobot komponen per mata kuliah) dari foto catatan/slide dosen ----
+
+export const GRADE_SYSTEM_PROMPT =
+  "Kamu asisten yang membaca rubrik penilaian mata kuliah dari foto (catatan tulisan tangan, slide dosen, atau kontrak perkuliahan) untuk mahasiswa Indonesia. " +
+  "Tulis ulang isinya persis dengan format yang diminta; jangan menambah komponen yang tidak ada di foto, dan jangan mengarang bobot yang tidak terbaca.";
+
+export const GRADE_PHOTO_PROMPT = `Baca foto rubrik nilai ini. Foto ini bisa berisi rubrik untuk satu atau beberapa mata kuliah sekaligus (mis. dua kolom berdampingan). Untuk SETIAP mata kuliah yang ada di foto, tulis ulang PERSIS dengan format berikut (bukan JSON, bukan tabel, teks biasa):
+
+STR
+Tugas+aktivitas 10%
+UTS 15%
+UAS 20%
+UTSP 25%
+UASP 30%
+
+SMA
+Aktifitas 5%
+Projek 50%
+Tugas 5%
+...dan seterusnya untuk tiap mata kuliah yang ada di foto.
+
+Aturan:
+- Baris pertama tiap mata kuliah: nama atau singkatan mata kuliah PERSIS seperti tertulis di foto (mis. "STR", "SMA", "ML", "VISKOM"), tanpa tanda "%".
+- Baris berikutnya: satu komponen nilai per baris, format "Nama komponen BOBOT%", persis seperti tertulis (boleh disingkat/digabung, mis. "Tugas+aktivitas", "Kuis/Tugas").
+- Pisahkan tiap mata kuliah dengan satu baris kosong.
+- Kalau ada tulisan yang tidak terbaca jelas atau dicoret, lewati baris itu saja daripada menebak.
+- Jangan tulis apa pun selain format di atas: tidak ada salam pembuka atau catatan penutup.`;

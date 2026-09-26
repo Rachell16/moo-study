@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ClipboardPaste, Sparkles } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Camera, ClipboardPaste, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AiQuotaLine } from "@/components/room-panels";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { GradeRow } from "@/hooks/use-grades";
+import { canUseAi, useAiStatus } from "@/hooks/use-study";
+import { resizeImageToJpeg } from "@/lib/image-resize";
+import { importGradesPhoto } from "@/lib/study.functions";
 import { matchBlocks, parseGradeText, type ParsedBlock } from "@/lib/parse-grades";
 import type { Course } from "@/lib/schedule-utils";
 
@@ -47,6 +52,27 @@ export function GradeQuickImport({
   const [text, setText] = useState("");
   const [picks, setPicks] = useState<Record<number, string>>({}); // index blok -> courseId pilihan manual
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const ai = useAiStatus(userId);
+  const importPhoto = useServerFn(importGradesPhoto);
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const { base64, mimeType } = await resizeImageToJpeg(file);
+      const r = await importPhoto({ data: { imageBase64: base64, mimeType } });
+      setText((prev) => (prev.trim() ? `${prev.trim()}\n\n${r.text}` : r.text));
+      toast.success("Rubrik dari foto sudah dibaca. Periksa dulu hasilnya sebelum menerapkan.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal membaca foto.");
+    } finally {
+      setPhotoBusy(false);
+      await qc.invalidateQueries({ queryKey: ["ai-status"] });
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const blocks = useMemo(() => matchBlocks(parseGradeText(text), courses), [text, courses]);
   const resolved = blocks.map((b, i) => ({ ...b, courseId: picks[i] ?? b.courseId }));
@@ -99,6 +125,43 @@ export function GradeQuickImport({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
+            <div className="grid gap-2 rounded-md border border-dashed border-border p-3">
+              <p className="text-sm font-semibold">
+                Atau foto catatan/rubrik nilaimu (boleh beberapa mata kuliah dalam satu foto)
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => void pickPhoto(e.target.files?.[0])}
+              />
+              {!ai.data?.configured ? (
+                <p className="text-xs text-muted-foreground">
+                  Fitur ini butuh AI. Aktifkan <code>GEMINI_API_KEY</code> dulu (lihat halaman
+                  Belajar).
+                </p>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-fit"
+                    disabled={photoBusy || !canUseAi(ai.data)}
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    <Camera /> {photoBusy ? "Membaca foto…" : "Pilih atau foto rubrik"}
+                  </Button>
+                  {photoBusy && (
+                    <p className="text-xs text-muted-foreground">
+                      Biasanya 10 sampai 30 detik. Jangan tutup dialog ini.
+                    </p>
+                  )}
+                  <AiQuotaLine ai={ai.data} />
+                </>
+              )}
+            </div>
             <textarea
               className="field min-h-40 w-full font-mono text-xs"
               value={text}
