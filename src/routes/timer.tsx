@@ -19,15 +19,9 @@ export const Route = createFileRoute("/timer")({
   head: () => ({
     meta: [
       { title: "Timer Belajar — Moo Study" },
-      {
-        name: "description",
-        content: "Podomororo yang tenang untuk sesi belajar fokus.",
-      },
+      { name: "description", content: "Pomodoro yang tenang untuk sesi belajar fokus." },
       { property: "og:title", content: "Timer Belajar — Moo Study" },
-      {
-        property: "og:description",
-        content: "Podomororo yang tenang untuk sesi belajar fokus.",
-      },
+      { property: "og:description", content: "Pomodoro yang tenang untuk sesi belajar fokus." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -63,30 +57,18 @@ function TimerPage() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
   const dates = useMemo(
-    () =>
-      (sessions.data ?? []).map(
-        (s) => new Date(s.completed_at ?? s.started_at),
-      ),
+    () => (sessions.data ?? []).map((s) => new Date(s.completed_at ?? s.started_at)),
     [sessions.data],
   );
-  const streak = useMemo(
-    () => computeStreak(dates, now ?? new Date()),
-    [dates, now],
-  );
-  const marks = useMemo(
-    () => weekMarks(dates, startOfWeek(now ?? new Date())),
-    [dates, now],
-  );
+  const streak = useMemo(() => computeStreak(dates, now ?? new Date()), [dates, now]);
+  const marks = useMemo(() => weekMarks(dates, startOfWeek(now ?? new Date())), [dates, now]);
   const todayIndex = now ? (now.getDay() + 6) % 7 : -1;
   const today = useMemo(() => {
     const key = dayKey(now ?? new Date());
     const list = (sessions.data ?? []).filter(
       (s) => dayKey(new Date(s.completed_at ?? s.started_at)) === key,
     );
-    return {
-      count: list.length,
-      minutes: list.reduce((sum, s) => sum + s.focus_minutes, 0),
-    };
+    return { count: list.length, minutes: list.reduce((sum, s) => sum + s.focus_minutes, 0) };
   }, [sessions.data, now]);
 
   const courseList = useMemo(() => courses.data ?? [], [courses.data]);
@@ -126,9 +108,7 @@ function TimerPage() {
             >
               <div>
                 <span>{clock}</span>
-                <small>
-                  {phase === "focus" ? "tetap fokus, ya" : "tarik napas dulu"}
-                </small>
+                <small>{phase === "focus" ? "tetap fokus, ya" : "tarik napas dulu"}</small>
               </div>
             </div>
 
@@ -164,9 +144,8 @@ function TimerPage() {
                 />
               ))}
               <span className="ml-2 text-xs text-muted-foreground">
-                sesi{" "}
-                {Math.min(cycle + (phase === "focus" ? 1 : 0), settings.cycle)}{" "}
-                dari {settings.cycle} sebelum istirahat panjang
+                sesi {Math.min(cycle + (phase === "focus" ? 1 : 0), settings.cycle)} dari{" "}
+                {settings.cycle} sebelum istirahat panjang
               </span>
             </div>
 
@@ -189,28 +168,15 @@ function TimerPage() {
 
           <PaperCard>
             <p className="section-kicker">Pengaturan</p>
-            <h2 className="font-display text-2xl font-bold">
-              Atur ritme belajarmu
-            </h2>
-            <div
-              className="mt-4 flex flex-wrap gap-2"
-              role="group"
-              aria-label="Preset"
-            >
+            <h2 className="font-display text-2xl font-bold">Atur ritme belajarmu</h2>
+            <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Preset">
               {PRESETS.map((p) => (
                 <Button
                   key={p.id}
                   size="sm"
-                  variant={
-                    presetIdOf(settings) === p.id ? "default" : "outline"
-                  }
+                  variant={presetIdOf(settings) === p.id ? "default" : "outline"}
                   onClick={() =>
-                    update({
-                      focus: p.focus,
-                      short: p.short,
-                      long: p.long,
-                      cycle: p.cycle,
-                    })
+                    update({ focus: p.focus, short: p.short, long: p.long, cycle: p.cycle })
                   }
                 >
                   {p.label}
@@ -223,9 +189,8 @@ function TimerPage() {
               </span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Pilih preset, atau ubah angka di bawah untuk membuat ritme
-              sendiri. Perubahan berlaku di sesi berikutnya kalau timer sedang
-              jalan.
+              Pilih preset, atau ubah angka di bawah untuk membuat ritme sendiri. Perubahan berlaku
+              di sesi berikutnya kalau timer sedang jalan.
             </p>
 
             <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -300,12 +265,8 @@ function TimerPage() {
                 <Flame />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase text-muted-foreground">
-                  Study streak
-                </p>
-                <p className="font-display text-3xl font-bold">
-                  {streak.current} hari
-                </p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">Study streak</p>
+                <p className="font-display text-3xl font-bold">{streak.current} hari</p>
               </div>
             </div>
             <div className="mt-5 flex justify-between">
@@ -317,19 +278,14 @@ function TimerPage() {
                   >
                     ✓
                   </span>
-                  <small className="mt-1 block text-muted-foreground">
-                    {DAY_LETTERS[i]}
-                  </small>
+                  <small className="mt-1 block text-muted-foreground">{DAY_LETTERS[i]}</small>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
               {loading ? null : !userId ? (
                 <>
-                  <Link
-                    to="/auth"
-                    className="font-semibold text-primary underline"
-                  >
+                  <Link to="/auth" className="font-semibold text-primary underline">
                     Masuk
                   </Link>{" "}
                   supaya sesi fokusmu tercatat.
@@ -348,9 +304,7 @@ function TimerPage() {
             <h2 className="font-display text-xl font-bold">Sesi hari ini</h2>
             <p className="mt-4 text-4xl font-bold">
               {today.minutes}{" "}
-              <span className="text-base font-medium text-muted-foreground">
-                menit
-              </span>
+              <span className="text-base font-medium text-muted-foreground">menit</span>
             </p>
             <div
               className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
@@ -362,9 +316,7 @@ function TimerPage() {
             >
               <div
                 className="h-full bg-accent"
-                style={{
-                  width: `${Math.min(today.count / settings.goal, 1) * 100}%`,
-                }}
+                style={{ width: `${Math.min(today.count / settings.goal, 1) * 100}%` }}
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -405,12 +357,7 @@ function NumberField({
         onChange={(e) => {
           setText(e.target.value);
           const n = Number(e.target.value);
-          if (
-            e.target.value !== "" &&
-            Number.isInteger(n) &&
-            n >= range[0] &&
-            n <= range[1]
-          )
+          if (e.target.value !== "" && Number.isInteger(n) && n >= range[0] && n <= range[1])
             onCommit(n);
         }}
         onBlur={() => setText(String(value))}

@@ -213,6 +213,50 @@ export type Database = {
           },
         ]
       }
+      grade_components: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+          score: number | null
+          updated_at: string
+          user_id: string
+          weight_percent: number
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          score?: number | null
+          updated_at?: string
+          user_id: string
+          weight_percent: number
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          score?: number | null
+          updated_at?: string
+          user_id?: string
+          weight_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_components_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_points: {
         Row: {
           created_at: string

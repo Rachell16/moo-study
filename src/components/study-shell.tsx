@@ -39,10 +39,13 @@ export function StudyShell({
   children,
   title,
   kicker,
+  wide,
 }: {
   children: ReactNode;
   title: string;
   kicker: string;
+  // Halaman yang perlu ruang ekstra (mis. PDF berdampingan poin materi) bisa lepas dari batas lebar standar.
+  wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // Sidebar bisa ditutup di layar besar supaya materi (PDF, poin) kelihatan lebih lega. Pilihan ini diingat di browser.
@@ -178,7 +181,9 @@ export function StudyShell({
             </Button>
           )}
         </header>
-        <main className="mx-auto w-full max-w-7xl p-4 md:p-8 print:max-w-none print:p-0">
+        <main
+          className={`mx-auto w-full p-4 md:p-8 print:max-w-none print:p-0 ${wide ? "max-w-[1800px]" : "max-w-7xl"}`}
+        >
           {children}
         </main>
       </div>

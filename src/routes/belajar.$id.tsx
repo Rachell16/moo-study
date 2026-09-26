@@ -75,7 +75,7 @@ function RoomPage() {
   };
 
   return (
-    <StudyShell title="Ruang belajar" kicker={course ? `${course.code} ${course.name}` : "Belajar"}>
+    <StudyShell title="Ruang belajar" kicker={course ? `${course.code} ${course.name}` : "Belajar"} wide>
       {loading ? null : !userId ? (
         <PaperCard className="mx-auto max-w-lg text-center">
           <h2 className="font-display text-2xl font-bold">
@@ -133,7 +133,7 @@ function RoomPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:h-[max(26rem,calc(100dvh-17rem))] md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:h-[max(28rem,calc(100dvh-15rem))] md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
             <PaperCard className="hidden min-h-0 flex-col p-2 md:flex">
               {!isPdf ? (
                 <p className="p-6 text-sm text-muted-foreground">

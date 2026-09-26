@@ -124,7 +124,17 @@ function BelajarPage() {
         <>
           <PlanCard userId={userId} />
 
-          <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
+          <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <PaperCard>
+              <p className="section-kicker">Fokus nilai</p>
+              <h2 className="font-display text-xl font-bold">Rencana nilai</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Kalkulator nilai per mata kuliah, dan yang paling menentukan buat dipelajari duluan.
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link to="/belajar/nilai">Buka kalkulator</Link>
+              </Button>
+            </PaperCard>
             <PaperCard>
               <p className="section-kicker">Ujian</p>
               <h2 className="font-display text-xl font-bold">Rencana menuju ujian</h2>
