@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Calculator, FileText, TrendingUp } from "lucide-
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { GradeEditor } from "@/components/grade-editor";
+import { GradeQuickImport } from "@/components/grade-quick-import";
 import { PaperCard, StudyShell } from "@/components/study-shell";
 import { useCourses } from "@/hooks/use-schedules";
 import { useSession } from "@/hooks/use-session";
@@ -120,13 +121,23 @@ function NilaiPage() {
           </PaperCard>
 
           <PaperCard>
-            <div className="flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-primary" aria-hidden="true" />
-              <h2 className="font-display text-xl font-bold">Kalkulator nilai per mata kuliah</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-primary" aria-hidden="true" />
+                <h2 className="font-display text-xl font-bold">Kalkulator nilai per mata kuliah</h2>
+              </div>
+              {userId && courses.isSuccess && (courses.data ?? []).length > 0 && (
+                <GradeQuickImport
+                  userId={userId}
+                  courses={courses.data ?? []}
+                  existing={rowsByCourse}
+                />
+              )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Masukkan bobot tiap komponen sesuai rubrik dosen (harus total 100%), lalu isi nilai
-              yang sudah keluar.
+              yang sudah keluar. Punya beberapa mata kuliah sekaligus? Pakai &ldquo;Impor
+              cepat&rdquo; di atas.
             </p>
 
             {courses.isSuccess && (courses.data ?? []).length === 0 ? (
